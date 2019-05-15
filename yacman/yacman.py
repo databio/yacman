@@ -1,14 +1,40 @@
 import attmap
-import yaml
+import oyaml as yaml
 
 
-def to_yaml(dictlike):
-    ## TODO: use a recursive dict function for attmap representation
-    try:
-        return yaml.dump(dictlike, default_flow_style=False)
-    except yaml.representer.RepresenterError:
-        print("SERIALIZED SAMPLE DATA: {}".format(self))
-        raise
+class YacAttMap(attmap.OrdAttMap):
+    """
+    A class that extends AttMap to provide yaml reading and writing
+    """
+
+    def __init__(self, entries=None):
+        if isinstance(entries, str):
+            # If user provides a string, it's probably a filename we should read
+            entries = load_yaml(entries)
+        return super(YacAttMap, self).__init__(entries or {})
+
+
+    def __repr__(self):
+        data = self._simplify_keyvalue(self._data_for_repr())
+        if data:
+            return "\n".join(
+                attmap.get_data_lines(data, lambda obj: repr(obj).strip("'")))
+        else:
+            return "{}"
+
+    def to_yaml(self):
+        ## TODO: use a recursive dict function for attmap representation
+        try:
+            return yaml.dump(self, default_flow_style=False)
+        except yaml.representer.RepresenterError:
+            print("SERIALIZED SAMPLE DATA: {}".format(self))
+            raise
+
+    @property
+    def _lower_type_bound(self):
+        """ Most specific type to which an inserted value may be converted """
+        return YacAttMap
+
 
 
 def load_yaml(filename):
