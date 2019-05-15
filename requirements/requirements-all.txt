@@ -1,0 +1,2 @@
+attmap>=0.8
+pyyaml>=3.13
