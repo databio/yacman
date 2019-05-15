@@ -1,17 +1,27 @@
 import pytest
+import attmap
 
-import yacman
 
 def test_yaml_load():
 	conf = yacman.load_yaml("conf.yaml")
 
 	yacmap = yacman.YacAttMap("conf.yaml")
-	yacmap = yacman.YacAttMap(conf)
+	yacmap2 = yacman.YacAttMap(conf)
+
+	assert(yacmap == yacmap2)
+
+	yacmap
+	assert(yacmap.genome_folder == "$GENOMES")
+	assert(yacmap2.genome_folder == "$GENOMES")
+	print(yacmap.genomes.to_yaml())
+
+	# test order
+
+
 
 
 
 import yacman
-import attmap
 conf = yacman.load_yaml("conf.yaml")
 conf
 attmap.OrdAttMap(conf)

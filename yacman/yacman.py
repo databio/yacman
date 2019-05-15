@@ -1,6 +1,9 @@
 import attmap
+import os
 import oyaml as yaml
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 class YacAttMap(attmap.OrdAttMap):
     """
@@ -29,6 +32,9 @@ class YacAttMap(attmap.OrdAttMap):
         except yaml.representer.RepresenterError:
             print("SERIALIZED SAMPLE DATA: {}".format(self))
             raise
+
+    def to_file(self, filename):
+        pass
 
     @property
     def _lower_type_bound(self):
@@ -81,9 +87,9 @@ def select_load_config(config_filepath=None,
         _LOGGER.debug("No local config file was provided")
         # Second priority: environment variables (in priority order)
         if config_env_vars:
-            _LOGGER.debug("Checking for environment variable: {}".format(CONFIG_ENV_VARS))
+            _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
 
-            cfg_env_var, cfg_file = get_first_env_var(self.compute_env_var) or ["", ""]
+            cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
             if os.path.isfile(cfg_file):
                 _LOGGER.debug("Found config file in {}: {}".
@@ -91,11 +97,12 @@ def select_load_config(config_filepath=None,
                 selected_filepath = cfg_file
             else:
                 _LOGGER.info("Using default config file, no global config file provided in environment "
-                             "variable(s): {}".format(str(self.compute_env_var)))
+                             "variable(s): {}".format(str(config_env_vars)))
                 selected_filepath = default_config_filepath
         else:
             _LOGGER.error("No configuration file found.")
 
+    config_data = None
     try:
         config_data = load_yaml(selected_filepath)
     except Exception as e:
