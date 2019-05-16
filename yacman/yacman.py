@@ -14,6 +14,8 @@ class YacAttMap(attmap.PathExAttMap):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
+            # self._file_path = entries
+            # self._excl_from_repr("_file_path")
             entries = load_yaml(entries)
         return super(YacAttMap, self).__init__(entries or {})
 
@@ -29,9 +31,15 @@ class YacAttMap(attmap.PathExAttMap):
 
 
 def load_yaml(filename):
-    with open(filename, 'r') as f:
-        data = yaml.load(f, yaml.SafeLoader)
-    return data
+    try:
+        with open(filename, 'r') as f:
+            data = yaml.load(f, yaml.SafeLoader)
+        return data
+
+    except Exception as e:
+        _LOGGER.error("Can't load config file '%s'",
+                      str(filename))
+        _LOGGER.error(str(type(e).__name__) + str(e))
 
 
 def get_first_env_var(ev):
@@ -53,11 +61,18 @@ def get_first_env_var(ev):
             return [i, os.getenv(i)]
 
 
-def select_load_config(config_filepath=None, 
-                        config_env_vars=None, 
-                        config_name="config file", 
-                        default_config_filepath=None):
+def select_config(config_filepath=None, 
+                    config_env_vars=None, 
+                    config_name="config file", 
+                    default_config_filepath=None):
+    """
+    Selects the config file to load.
 
+    This uses a priority ordering to first choose a config filepath if it's given,
+    but if not, then look in a priority list of environment variables and choose
+    the first available filepath to return.
+
+    """
     selected_filepath = None
 
     # First priority: given file
@@ -87,12 +102,5 @@ def select_load_config(config_filepath=None,
         else:
             _LOGGER.error("No configuration file found.")
 
-    config_data = None
-    try:
-        config_data = load_yaml(selected_filepath)
-    except Exception as e:
-        _LOGGER.error("Can't load config file '%s'",
-                      str(selected_filepath))
-        _LOGGER.error(str(type(e).__name__) + str(e))
-
-    return config_data
+    return selected_filepath
+    
