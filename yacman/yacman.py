@@ -5,36 +5,22 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-class YacAttMap(attmap.OrdAttMap):
+class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and writing
     """
 
     def __init__(self, entries=None):
+
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
             entries = load_yaml(entries)
         return super(YacAttMap, self).__init__(entries or {})
 
-
-    def __repr__(self):
-        data = self._simplify_keyvalue(self._data_for_repr())
-        if data:
-            return "\n".join(
-                attmap.get_data_lines(data, lambda obj: repr(obj).strip("'")))
-        else:
-            return "{}"
-
-    def to_yaml(self):
-        ## TODO: use a recursive dict function for attmap representation
-        try:
-            return yaml.dump(self, default_flow_style=False)
-        except yaml.representer.RepresenterError:
-            print("SERIALIZED SAMPLE DATA: {}".format(self))
-            raise
-
-    def to_file(self, filename):
-        pass
+    def write(self, filename):
+        with open(filename, 'w') as f:
+            f.write(self.to_yaml())
+        return os.path.abspath(filename)
 
     @property
     def _lower_type_bound(self):
@@ -42,9 +28,7 @@ class YacAttMap(attmap.OrdAttMap):
         return YacAttMap
 
 
-
 def load_yaml(filename):
-    import yaml
     with open(filename, 'r') as f:
         data = yaml.load(f, yaml.SafeLoader)
     return data
@@ -67,6 +51,7 @@ def get_first_env_var(ev):
     for i in ev:
         if os.getenv(i, False):
             return [i, os.getenv(i)]
+
 
 def select_load_config(config_filepath=None, 
                         config_env_vars=None, 
