@@ -5,36 +5,24 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-class YacAttMap(attmap.OrdAttMap):
+class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and writing
     """
 
     def __init__(self, entries=None):
+
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
+            # self._file_path = entries
+            # self._excl_from_repr("_file_path")
             entries = load_yaml(entries)
         return super(YacAttMap, self).__init__(entries or {})
 
-
-    def __repr__(self):
-        data = self._simplify_keyvalue(self._data_for_repr())
-        if data:
-            return "\n".join(
-                attmap.get_data_lines(data, lambda obj: repr(obj).strip("'")))
-        else:
-            return "{}"
-
-    def to_yaml(self):
-        ## TODO: use a recursive dict function for attmap representation
-        try:
-            return yaml.dump(self, default_flow_style=False)
-        except yaml.representer.RepresenterError:
-            print("SERIALIZED SAMPLE DATA: {}".format(self))
-            raise
-
-    def to_file(self, filename):
-        pass
+    def write(self, filename):
+        with open(filename, 'w') as f:
+            f.write(self.to_yaml())
+        return os.path.abspath(filename)
 
     @property
     def _lower_type_bound(self):
@@ -42,12 +30,16 @@ class YacAttMap(attmap.OrdAttMap):
         return YacAttMap
 
 
-
 def load_yaml(filename):
-    import yaml
-    with open(filename, 'r') as f:
-        data = yaml.load(f, yaml.SafeLoader)
-    return data
+    try:
+        with open(filename, 'r') as f:
+            data = yaml.load(f, yaml.SafeLoader)
+        return data
+
+    except Exception as e:
+        _LOGGER.error("Can't load config file '%s'",
+                      str(filename))
+        _LOGGER.error(str(type(e).__name__) + str(e))
 
 
 def get_first_env_var(ev):
@@ -68,11 +60,19 @@ def get_first_env_var(ev):
         if os.getenv(i, False):
             return [i, os.getenv(i)]
 
-def select_load_config(config_filepath=None, 
-                        config_env_vars=None, 
-                        config_name="config file", 
-                        default_config_filepath=None):
 
+def select_config(config_filepath=None, 
+                    config_env_vars=None, 
+                    config_name="config file", 
+                    default_config_filepath=None):
+    """
+    Selects the config file to load.
+
+    This uses a priority ordering to first choose a config filepath if it's given,
+    but if not, then look in a priority list of environment variables and choose
+    the first available filepath to return.
+
+    """
     selected_filepath = None
 
     # First priority: given file
@@ -102,12 +102,5 @@ def select_load_config(config_filepath=None,
         else:
             _LOGGER.error("No configuration file found.")
 
-    config_data = None
-    try:
-        config_data = load_yaml(selected_filepath)
-    except Exception as e:
-        _LOGGER.error("Can't load config file '%s'",
-                      str(selected_filepath))
-        _LOGGER.error(str(type(e).__name__) + str(e))
-
-    return config_data
+    return selected_filepath
+    
