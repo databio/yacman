@@ -16,12 +16,16 @@ class YacAttMap(attmap.PathExAttMap):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
-            # self._file_path = entries
-            # self._excl_from_repr("_file_path")
+            self._file_path = entries
             entries = load_yaml(entries)
         super(YacAttMap, self).__init__(entries or {})
 
-    def write(self, filename):
+    def write(self, filename=None):
+        if not filename:
+            if hasattr(self, "_file_path") and self._file_path:
+                filename = self._file_path
+            else:
+                raise AttributeError("No filename provided.")
         with open(filename, 'w') as f:
             f.write(self.to_yaml())
         return os.path.abspath(filename)
@@ -30,6 +34,10 @@ class YacAttMap(attmap.PathExAttMap):
     def _lower_type_bound(self):
         """ Most specific type to which an inserted value may be converted """
         return YacAttMap
+
+    def _excl_from_repr(self, k, cls):
+        protected = "_file_path"
+        return k in protected
 
 
 def load_yaml(filename):
