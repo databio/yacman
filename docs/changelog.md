@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+
+## [0.3.0] -- 2019-06-04
+
+- Allow a YacAttMap to remember its own path so it can use `write` without an argument.
 
 ## [0.2.0] -- 2019-05-21
 
