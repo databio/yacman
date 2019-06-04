@@ -1,9 +1,11 @@
 import attmap
 import os
+from collections import Iterable
 import oyaml as yaml
 import logging
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class YacAttMap(attmap.PathExAttMap):
     """
@@ -14,12 +16,16 @@ class YacAttMap(attmap.PathExAttMap):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
-            # self._file_path = entries
-            # self._excl_from_repr("_file_path")
+            self._file_path = entries
             entries = load_yaml(entries)
-        return super(YacAttMap, self).__init__(entries or {})
+        super(YacAttMap, self).__init__(entries or {})
 
-    def write(self, filename):
+    def write(self, filename=None):
+        if not filename:
+            if hasattr(self, "_file_path") and self._file_path:
+                filename = self._file_path
+            else:
+                raise AttributeError("No filename provided.")
         with open(filename, 'w') as f:
             f.write(self.to_yaml())
         return os.path.abspath(filename)
@@ -28,6 +34,10 @@ class YacAttMap(attmap.PathExAttMap):
     def _lower_type_bound(self):
         """ Most specific type to which an inserted value may be converted """
         return YacAttMap
+
+    def _excl_from_repr(self, k, cls):
+        protected = "_file_path"
+        return k in protected
 
 
 def load_yaml(filename):
@@ -46,25 +56,24 @@ def get_first_env_var(ev):
     """
     Get the name and value of the first set environment variable
 
-    :param ev: a list of the environment variable names
-    :type: list[str] | str
-    :return: name and the value of the environment variable
-    :rtype: list
+    :param str | Iterable[str] ev: a list of the environment variable names
+    :return (str, str): name and the value of the environment variable
     """
-    if not isinstance(ev, list):
-        if isinstance(ev, str):
-            ev = [ev]
-        else:
-            raise TypeError("The argument has to be a list or string.")
-    for i in ev:
-        if os.getenv(i, False):
-            return [i, os.getenv(i)]
+    if isinstance(ev, str):
+        ev = [ev]
+    elif not isinstance(ev, Iterable):
+        raise TypeError("Env var must be single name or collection of names; "
+                        "got {}".format(type(ev)))
+    # TODO: we should handle the null (not found) case, as client code is inclined to unpack, and ValueError guard is vague.
+    for v in ev:
+        try:
+            return v, os.environ[v]
+        except KeyError:
+            pass
 
 
-def select_config(config_filepath=None, 
-                    config_env_vars=None, 
-                    config_name="config file", 
-                    default_config_filepath=None):
+def select_config(config_filepath=None, config_env_vars=None,
+                  default_config_filepath=None):
     """
     Selects the config file to load.
 
@@ -103,4 +112,3 @@ def select_config(config_filepath=None,
             _LOGGER.error("No configuration file found.")
 
     return selected_filepath
-    
