@@ -45,15 +45,9 @@ class YacAttMap(attmap.PathExAttMap):
 
 
 def load_yaml(filename):
-    try:
-        with open(filename, 'r') as f:
-            data = yaml.load(f, yaml.SafeLoader)
-        return data
-
-    except Exception as e:
-        _LOGGER.error("Can't load config file '%s'",
-                      str(filename))
-        _LOGGER.error(str(type(e).__name__) + str(e))
+    with open(filename, 'r') as f:
+        data = yaml.load(f, yaml.SafeLoader)
+    return data
 
 
 def get_first_env_var(ev):
