@@ -7,6 +7,9 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 
+FILEPATH_KEY = "_file_path"
+
+
 class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and writing
@@ -16,16 +19,18 @@ class YacAttMap(attmap.PathExAttMap):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
-            self._file_path = entries
+            fp = entries
             entries = load_yaml(entries)
+        else:
+            fp = None
         super(YacAttMap, self).__init__(entries or {})
+        if fp:
+            setattr(self, FILEPATH_KEY, fp)
 
     def write(self, filename=None):
+        filename = filename or getattr(self, FILEPATH_KEY)
         if not filename:
-            if hasattr(self, "_file_path") and self._file_path:
-                filename = self._file_path
-            else:
-                raise AttributeError("No filename provided.")
+            raise Exception("No filename provided.")
         with open(filename, 'w') as f:
             f.write(self.to_yaml())
         return os.path.abspath(filename)
@@ -36,20 +41,13 @@ class YacAttMap(attmap.PathExAttMap):
         return YacAttMap
 
     def _excl_from_repr(self, k, cls):
-        protected = "_file_path"
-        return k in protected
+        return k == FILEPATH_KEY
 
 
 def load_yaml(filename):
-    try:
-        with open(filename, 'r') as f:
-            data = yaml.load(f, yaml.SafeLoader)
-        return data
-
-    except Exception as e:
-        _LOGGER.error("Can't load config file '%s'",
-                      str(filename))
-        _LOGGER.error(str(type(e).__name__) + str(e))
+    with open(filename, 'r') as f:
+        data = yaml.load(f, yaml.SafeLoader)
+    return data
 
 
 def get_first_env_var(ev):
