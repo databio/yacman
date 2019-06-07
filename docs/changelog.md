@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix bug when building a `YacAttMap` with a filepath: [Issue 6](https://github.com/databio/yacman/issues/6)
+- Defer exception handling from `load_yaml` to client code.
 
 ## [0.3.0] -- 2019-06-04
 
