@@ -16,9 +16,13 @@ class YacAttMap(attmap.PathExAttMap):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
-            self._file_path = entries
+            fp = entries
             entries = load_yaml(entries)
+        else:
+            fp = None
         super(YacAttMap, self).__init__(entries or {})
+        if fp:
+            self._file_path = fp
 
     def write(self, filename=None):
         if not filename:
