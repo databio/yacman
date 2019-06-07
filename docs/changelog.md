@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4] -- 2019-06-07
+## [0.4.0] -- 2019-06-07
 
 - Fix bug when building a `YacAttMap` with a filepath in Python 2.7: [Issue 6](https://github.com/databio/yacman/issues/6)
 - Defer exception handling from `load_yaml` to client code.
