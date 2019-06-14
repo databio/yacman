@@ -71,7 +71,7 @@ def get_first_env_var(ev):
 
 
 def select_config(config_filepath=None, config_env_vars=None,
-                  default_config_filepath=None):
+                  default_config_filepath=None, on_missing=lambda fp: IOError(fp)):
     """
     Selects the config file to load.
 
@@ -79,6 +79,13 @@ def select_config(config_filepath=None, config_env_vars=None,
     but if not, then look in a priority list of environment variables and choose
     the first available filepath to return.
 
+    :param str | NoneType config_filepath: direct filepath specification
+    :param Iterable[str] | NoneType config_env_vars: names of environment
+        variables to try for config filepaths
+    :param str default_config_filepath: default value if no other alternative
+        resolution succeeds
+    :param function(str) -> object: what to do with a filepath if it doesn't
+        exist
     """
     selected_filepath = None
 
@@ -87,12 +94,14 @@ def select_config(config_filepath=None, config_env_vars=None,
         if not os.path.isfile(config_filepath):
             _LOGGER.error("Config file path isn't a file: {}".
                           format(config_filepath))
-            raise IOError(config_filepath)
-        else:
-            selected_filepath = config_filepath
+            result = on_missing(config_filepath)
+            if isinstance(result, Exception):
+                raise result
+            return result
+        selected_filepath = config_filepath
     else:
         _LOGGER.debug("No local config file was provided")
-        # Second priority: environment variables (in priority order)
+        # Second priority: environment variables (in order)
         if config_env_vars:
             _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
 
