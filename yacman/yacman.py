@@ -84,38 +84,39 @@ def select_config(config_filepath=None, config_env_vars=None,
         variables to try for config filepaths
     :param str default_config_filepath: default value if no other alternative
         resolution succeeds
-    :param function(str) -> object: what to do with a filepath if it doesn't
-        exist
+    :param function(str) -> object on_missing: what to do with a filepath if it
+        doesn't exist
     """
-    selected_filepath = None
 
     # First priority: given file
     if config_filepath:
-        if not os.path.isfile(config_filepath):
-            _LOGGER.error("Config file path isn't a file: {}".
-                          format(config_filepath))
-            result = on_missing(config_filepath)
-            if isinstance(result, Exception):
-                raise result
-            return result
-        selected_filepath = config_filepath
-    else:
-        _LOGGER.debug("No local config file was provided")
-        # Second priority: environment variables (in order)
-        if config_env_vars:
-            _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
+        if os.path.isfile(config_filepath):
+            return config_filepath
+        _LOGGER.error("Config file path isn't a file: {}".
+                      format(config_filepath))
+        result = on_missing(config_filepath)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
-            cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
+    _LOGGER.debug("No local config file was provided")
+    selected_filepath = None
 
-            if os.path.isfile(cfg_file):
-                _LOGGER.debug("Found config file in {}: {}".
-                             format(cfg_env_var, cfg_file))
-                selected_filepath = cfg_file
-            else:
-                _LOGGER.info("Using default config file, no global config file provided in environment "
-                             "variable(s): {}".format(str(config_env_vars)))
-                selected_filepath = default_config_filepath
+    # Second priority: environment variables (in order)
+    if config_env_vars:
+        _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
+
+        cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
+
+        if os.path.isfile(cfg_file):
+            _LOGGER.debug("Found config file in {}: {}".
+                         format(cfg_env_var, cfg_file))
+            selected_filepath = cfg_file
         else:
-            _LOGGER.error("No configuration file found.")
+            _LOGGER.info("Using default config file, no global config file provided in environment "
+                         "variable(s): {}".format(str(config_env_vars)))
+            selected_filepath = default_config_filepath
+    else:
+        _LOGGER.error("No configuration file found.")
 
     return selected_filepath
