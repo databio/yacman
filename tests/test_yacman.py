@@ -1,6 +1,5 @@
 import pytest
 import yacman
-import attmap
 import os
 
 def test_yaml_load():
