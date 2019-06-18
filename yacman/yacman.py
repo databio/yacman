@@ -71,7 +71,9 @@ def get_first_env_var(ev):
 
 
 def select_config(config_filepath=None, config_env_vars=None,
-                  default_config_filepath=None, on_missing=lambda fp: IOError(fp)):
+                  default_config_filepath=None,
+                  check_exist=True,
+                  on_missing=lambda fp: IOError(fp)):
     """
     Selects the config file to load.
 
@@ -82,6 +84,7 @@ def select_config(config_filepath=None, config_env_vars=None,
     :param str | NoneType config_filepath: direct filepath specification
     :param Iterable[str] | NoneType config_env_vars: names of environment
         variables to try for config filepaths
+    :param bool check_exist: whether to check for path existence as file
     :param str default_config_filepath: default value if no other alternative
         resolution succeeds
     :param function(str) -> object on_missing: what to do with a filepath if it
@@ -90,7 +93,7 @@ def select_config(config_filepath=None, config_env_vars=None,
 
     # First priority: given file
     if config_filepath:
-        if os.path.isfile(config_filepath):
+        if not check_exist or os.path.isfile(config_filepath):
             return config_filepath
         _LOGGER.error("Config file path isn't a file: {}".
                       format(config_filepath))
@@ -108,9 +111,9 @@ def select_config(config_filepath=None, config_env_vars=None,
 
         cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
-        if os.path.isfile(cfg_file):
+        if not check_exist or os.path.isfile(cfg_file):
             _LOGGER.debug("Found config file in {}: {}".
-                         format(cfg_env_var, cfg_file))
+                          format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         else:
             _LOGGER.info("Using default config file, no global config file provided in environment "

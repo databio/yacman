@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.2] -- 2019-06-18
+- Parameterize existence check for `select_config`.
+
 ## [0.4.1] -- 2019-06-14
 - Parameterize behavior when `select_config` filepath argument does not exist.
 
