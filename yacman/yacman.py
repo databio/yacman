@@ -116,3 +116,19 @@ def select_config(config_filepath=None, config_env_vars=None,
             _LOGGER.error("No configuration file found.")
 
     return selected_filepath
+
+def single_folder_writeable(d):
+    return os.access(d, os.W_OK) and os.access(d, os.X_OK)
+
+
+def writeable(outdir, strict_exists=False):
+    """
+    Recursively checks to make sure a folder exists and can be  written to.  
+    """
+    outdir = outdir or "."
+    if os.path.exists(outdir):
+        return _single_folder_writeable(outdir)
+    elif strict_exists:
+        raise MissingFolderError(outdir)
+    return writeable(os.path.dirname(outdir), strict_exists)
+
