@@ -62,15 +62,9 @@ class YacAttMap(attmap.PathExAttMap):
 
 
 def load_yaml(filename):
-    try:
-        with open(filename, 'r') as f:
-            data = yaml.load(f, yaml.SafeLoader)
-        return data
-
-    except Exception as e:
-        _LOGGER.error("Can't load config file '%s'",
-                      str(filename))
-        _LOGGER.error(str(type(e).__name__) + str(e))
+    with open(filename, 'r') as f:
+        data = yaml.load(f, yaml.SafeLoader)
+    return data
 
 
 def get_first_env_var(ev):
@@ -94,7 +88,9 @@ def get_first_env_var(ev):
 
 
 def select_config(config_filepath=None, config_env_vars=None,
-                  default_config_filepath=None):
+                  default_config_filepath=None,
+                  check_exist=True,
+                  on_missing=lambda fp: IOError(fp)):
     """
     Selects the config file to load.
 
@@ -102,35 +98,46 @@ def select_config(config_filepath=None, config_env_vars=None,
     but if not, then look in a priority list of environment variables and choose
     the first available filepath to return.
 
+    :param str | NoneType config_filepath: direct filepath specification
+    :param Iterable[str] | NoneType config_env_vars: names of environment
+        variables to try for config filepaths
+    :param bool check_exist: whether to check for path existence as file
+    :param str default_config_filepath: default value if no other alternative
+        resolution succeeds
+    :param function(str) -> object on_missing: what to do with a filepath if it
+        doesn't exist
     """
-    selected_filepath = None
 
     # First priority: given file
     if config_filepath:
-        if not os.path.isfile(config_filepath):
-            _LOGGER.error("Config file path isn't a file: {}".
-                          format(config_filepath))
-            raise IOError(config_filepath)
+        if not check_exist or os.path.isfile(config_filepath):
+            return config_filepath
+        _LOGGER.error("Config file path isn't a file: {}".
+                      format(config_filepath))
+        result = on_missing(config_filepath)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    _LOGGER.debug("No local config file was provided")
+    selected_filepath = None
+
+    # Second priority: environment variables (in order)
+    if config_env_vars:
+        _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
+
+        cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
+
+        if not check_exist or os.path.isfile(cfg_file):
+            _LOGGER.debug("Found config file in {}: {}".
+                          format(cfg_env_var, cfg_file))
+            selected_filepath = cfg_file
         else:
-            selected_filepath = config_filepath
+            _LOGGER.info("Using default config file, no global config file provided in environment "
+                         "variable(s): {}".format(str(config_env_vars)))
+            selected_filepath = default_config_filepath
     else:
-        _LOGGER.debug("No local config file was provided")
-        # Second priority: environment variables (in priority order)
-        if config_env_vars:
-            _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
-
-            cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
-
-            if os.path.isfile(cfg_file):
-                _LOGGER.debug("Found config file in {}: {}".
-                             format(cfg_env_var, cfg_file))
-                selected_filepath = cfg_file
-            else:
-                _LOGGER.info("Using default config file, no global config file provided in environment "
-                             "variable(s): {}".format(str(config_env_vars)))
-                selected_filepath = default_config_filepath
-        else:
-            _LOGGER.error("No configuration file found.")
+        _LOGGER.error("No configuration file found.")
 
     return selected_filepath
 
