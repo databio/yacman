@@ -101,9 +101,9 @@ def select_config(config_filepath=None, config_env_vars=None,
     :param str | NoneType config_filepath: direct filepath specification
     :param Iterable[str] | NoneType config_env_vars: names of environment
         variables to try for config filepaths
-    :param bool check_exist: whether to check for path existence as file
     :param str default_config_filepath: default value if no other alternative
         resolution succeeds
+    :param bool check_exist: whether to check for path existence as file
     :param function(str) -> object on_missing: what to do with a filepath if it
         doesn't exist
     """
