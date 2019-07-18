@@ -34,8 +34,8 @@ class YacAttMap(attmap.PathExAttMap):
             # This should be removed at a major version release now that the
             # filepath argument exists, but we retain it for backwards
             # compatibility
-            _LOGGER.warning("The entries argument should be a dict. If you want"
-            "to read a file, use the filepath arg")
+            _LOGGER.debug("The entries argument should be a dict. If you want"
+            " to read a file, use the filepath arg")
             filepath = entries
             entries = None
 

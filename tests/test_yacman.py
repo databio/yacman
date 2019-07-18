@@ -41,6 +41,8 @@ def test_entries_update():
     yacmap = yacman.YacAttMap({"entry": "updated"}, filepath="conf.yaml")
     yacmap = yacman.YacAttMap({"genome_folder": "updated"}, filepath="conf.yaml")
     assert(yacmap.genome_folder == "updated")
+    yacmap = yacman.YacAttMap()
+
 
 
 def test_write():
