@@ -18,7 +18,9 @@ class YacAttMap(attmap.PathExAttMap):
     python representation of your YAML configuration file, that can do a lot of
     cool stuff. You can access the hierarchical YAML attributes with dot
     notation or dict notation. You can read and write YAML config files with
-    easy functions. It also retains memory of the its source filepath.
+    easy functions. It also retains memory of the its source filepath. If both a
+    filepath and an entries dict are provided, it will first load the file
+    and then updated it with values from the dict.
 
     :param str | Iterable[(str, object)] | Mapping[str, object] entries: YAML
         filepath or collection of key-value pairs.
@@ -30,15 +32,19 @@ class YacAttMap(attmap.PathExAttMap):
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
             # This should be removed at a major version release now that the
-            # file argument exists, but we retain it for backwards compatibility
+            # filepath argument exists, but we retain it for backwards
+            # compatibility
+            _LOGGER.warning("The entries argument should be a dict. If you want"
+            "to read a file, use the filepath arg")
             filepath = entries
+            entries = None
 
         if filepath:
             file_contents = load_yaml(filepath)
             if entries:
-                entries.update(file_contents)
-            else:
-                entries = file_contents
+                file_contents.update(entries)
+
+            entries = file_contents
 
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
