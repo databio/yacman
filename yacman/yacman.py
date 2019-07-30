@@ -12,20 +12,43 @@ FILEPATH_KEY = "_file_path"
 
 class YacAttMap(attmap.PathExAttMap):
     """
-    A class that extends AttMap to provide yaml reading and writing
+    A class that extends AttMap to provide yaml reading and writing.
+
+    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a
+    python representation of your YAML configuration file, that can do a lot of
+    cool stuff. You can access the hierarchical YAML attributes with dot
+    notation or dict notation. You can read and write YAML config files with
+    easy functions. It also retains memory of the its source filepath. If both a
+    filepath and an entries dict are provided, it will first load the file
+    and then updated it with values from the dict.
+
+    :param str | Iterable[(str, object)] | Mapping[str, object] entries: YAML
+        filepath or collection of key-value pairs.
+    :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None):
+    def __init__(self, entries=None, filepath=None):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
-            fp = entries
-            entries = load_yaml(entries)
-        else:
-            fp = None
+            # This should be removed at a major version release now that the
+            # filepath argument exists, but we retain it for backwards
+            # compatibility
+            _LOGGER.debug("The entries argument should be a dict. If you want"
+            " to read a file, use the filepath arg")
+            filepath = entries
+            entries = None
+
+        if filepath:
+            file_contents = load_yaml(filepath)
+            if entries:
+                file_contents.update(entries)
+
+            entries = file_contents
+
         super(YacAttMap, self).__init__(entries or {})
-        if fp:
-            setattr(self, FILEPATH_KEY, fp)
+        if filepath:
+            setattr(self, FILEPATH_KEY, filepath)
 
     def write(self, filename=None):
         filename = filename or getattr(self, FILEPATH_KEY)
@@ -43,6 +66,13 @@ class YacAttMap(attmap.PathExAttMap):
     def _excl_from_repr(self, k, cls):
         return k == FILEPATH_KEY
 
+    def __repr__(self):
+        # Here we want to render the data in a nice way; and we want to indicate
+        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
+        # to give you the data without the class name.
+        return self._render(self._simplify_keyvalue(
+            self._data_for_repr(), self._new_empty_basic_map),
+            exclude_class_list="YacAttMap")
 
 def load_yaml(filename):
     with open(filename, 'r') as f:
@@ -70,7 +100,8 @@ def get_first_env_var(ev):
             pass
 
 
-def select_config(config_filepath=None, config_env_vars=None,
+def select_config(config_filepath=None,
+                  config_env_vars=None,
                   default_config_filepath=None,
                   check_exist=True,
                   on_missing=lambda fp: IOError(fp)):
@@ -84,9 +115,9 @@ def select_config(config_filepath=None, config_env_vars=None,
     :param str | NoneType config_filepath: direct filepath specification
     :param Iterable[str] | NoneType config_env_vars: names of environment
         variables to try for config filepaths
-    :param bool check_exist: whether to check for path existence as file
     :param str default_config_filepath: default value if no other alternative
         resolution succeeds
+    :param bool check_exist: whether to check for path existence as file
     :param function(str) -> object on_missing: what to do with a filepath if it
         doesn't exist
     """
@@ -123,3 +154,20 @@ def select_config(config_filepath=None, config_env_vars=None,
         _LOGGER.error("No configuration file found.")
 
     return selected_filepath
+
+
+def single_folder_writeable(d):
+    return os.access(d, os.W_OK) and os.access(d, os.X_OK)
+
+
+def writeable(outdir, strict_exists=False):
+    """
+    Recursively checks to make sure a folder exists and can be  written to.  
+    """
+    outdir = outdir or "."
+    if os.path.exists(outdir):
+        return _single_folder_writeable(outdir)
+    elif strict_exists:
+        raise MissingFolderError(outdir)
+    return writeable(os.path.dirname(outdir), strict_exists)
+
