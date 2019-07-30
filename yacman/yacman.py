@@ -66,6 +66,23 @@ class YacAttMap(attmap.PathExAttMap):
     def _excl_from_repr(self, k, cls):
         return k == FILEPATH_KEY
 
+    def _render(self, data):
+        # Here we want to render the data in a nice way; and we want to indicate
+        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
+        # to give you the data without the class name.
+        base = self.__class__.__name__
+        if data:
+            data_repr = "\n".join(
+                attmap.get_data_lines(data, lambda obj: repr(obj).strip("'")))
+
+            if base == "YacAttMap":
+                return data_repr
+            else:
+                return base + "\n" + data_repr
+        else:
+            return base + ": {}"
+
+
 
 def load_yaml(filename):
     with open(filename, 'r') as f:
@@ -93,7 +110,8 @@ def get_first_env_var(ev):
             pass
 
 
-def select_config(config_filepath=None, config_env_vars=None,
+def select_config(config_filepath=None,
+                  config_env_vars=None,
                   default_config_filepath=None,
                   check_exist=True,
                   on_missing=lambda fp: IOError(fp)):
