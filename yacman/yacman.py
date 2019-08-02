@@ -27,7 +27,7 @@ class YacAttMap(attmap.PathExAttMap):
     :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None, filepath=None):
+    def __init__(self, entries=None, filepath=None, yamldata=None):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
@@ -45,6 +45,9 @@ class YacAttMap(attmap.PathExAttMap):
                 file_contents.update(entries)
 
             entries = file_contents
+
+        if yamldata:
+            entries = yaml.load(yamldata, yaml.SafeLoader)
 
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
