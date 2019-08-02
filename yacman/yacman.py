@@ -150,8 +150,8 @@ def select_config(config_filepath=None,
                           format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         else:
-            _LOGGER.info("Using default config file, no global config file provided in environment "
-                         "variable(s): {}".format(str(config_env_vars)))
+            _LOGGER.info("Using default config. No config found in env "
+                         "var: {}".format(str(config_env_vars)))
             selected_filepath = default_config_filepath
     else:
         _LOGGER.error("No configuration file found.")
