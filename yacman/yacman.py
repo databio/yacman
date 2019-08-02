@@ -27,7 +27,7 @@ class YacAttMap(attmap.PathExAttMap):
     :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None, filepath=None):
+    def __init__(self, entries=None, filepath=None, yamldata=None):
 
         if isinstance(entries, str):
             # If user provides a string, it's probably a filename we should read
@@ -45,6 +45,9 @@ class YacAttMap(attmap.PathExAttMap):
                 file_contents.update(entries)
 
             entries = file_contents
+
+        if yamldata:
+            entries = yaml.load(yamldata, yaml.SafeLoader)
 
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
@@ -147,8 +150,8 @@ def select_config(config_filepath=None,
                           format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         else:
-            _LOGGER.info("Using default config file, no global config file provided in environment "
-                         "variable(s): {}".format(str(config_env_vars)))
+            _LOGGER.info("Using default config. No config found in env "
+                         "var: {}".format(str(config_env_vars)))
             selected_filepath = default_config_filepath
     else:
         _LOGGER.error("No configuration file found.")

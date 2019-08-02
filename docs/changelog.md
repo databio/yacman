@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1] -- Unreleased
+- Allow providing a yaml string to constructor.
+
+## [0.5.0] -- 2019-06-18
+- Improve constructor to allow either a dict or a filepath
+- Make printing prettier
+
 ## [0.4.2] -- 2019-06-18
 - Parameterize existence check for `select_config`.
 
