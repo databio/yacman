@@ -49,7 +49,7 @@ setup(
     ],    
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
-    url='https://refgenie.databio.org',
+    url='https://github.com/databio/yacman',
     author='Nathan Sheffield',
     author_email='nathan@code.databio.org',
     **extra
