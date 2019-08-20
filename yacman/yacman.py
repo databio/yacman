@@ -1,13 +1,20 @@
 import attmap
 import os
 from collections import Iterable
-import oyaml as yaml
+import yaml as yaml
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
 
 FILEPATH_KEY = "_file_path"
+
+def my_construct_mapping(self, node, deep=False):
+    data = self.construct_mapping_org(node, deep)
+    return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
+
+yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
+yaml.SafeLoader.construct_mapping = my_construct_mapping
 
 
 class YacAttMap(attmap.PathExAttMap):
@@ -77,11 +84,20 @@ class YacAttMap(attmap.PathExAttMap):
             self._data_for_repr(), self._new_empty_basic_map),
             exclude_class_list="YacAttMap")
 
+
 def load_yaml(filename):
+    # Credit: Anthon
+    # https://stackoverflow.com/questions/50045617
     with open(filename, 'r') as f:
-        data = yaml.load(f, yaml.SafeLoader)
+        data = yaml.safe_load(f)
     return data
 
+# y = load_yaml("/home/nsheff/Dropbox/env/bulker_config/puma.yaml")
+
+# f = "/home/nsheff/Dropbox/env/bulker_config/puma.yaml"
+# import yacman
+# y2 = yacman.YacAttMap(f)
+# y2["bulker"]["crates"]["databio"]["lab"]["1.0"]
 
 def get_first_env_var(ev):
     """

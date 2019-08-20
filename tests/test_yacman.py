@@ -62,9 +62,30 @@ def test_write():
         yacmap_nofile.write()
 
 
+yaml_str = """\
+---
+one: 1
+2: two
+"""
+
+def test_float_idx():
+
+    data = yacman.YacAttMap(yamldata=yaml_str)
+    # We should be able to access this by string, not by int index.
+    assert(data['2'] == "two")
+    with pytest.raises(KeyError):
+        data[2]
+
 
 # import yacman
 # conf = yacman.load_yaml("conf.yaml")
 # conf
 # attmap.OrdAttMap(conf)
 
+
+# y = load_yaml("/home/nsheff/Dropbox/env/bulker_config/puma.yaml")
+
+# f = "/home/nsheff/Dropbox/env/bulker_config/puma.yaml"
+# import yacman
+# y2 = yacman.YacAttMap(f)
+# y2["bulker"]["crates"]["databio"]["lab"]["1.0"]
