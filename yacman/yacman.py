@@ -13,8 +13,22 @@ def my_construct_mapping(self, node, deep=False):
     data = self.construct_mapping_org(node, deep)
     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
 
+def construct_pairs(self, node, deep=False):
+    # if not isinstance(node, MappingNode):
+    #     raise ConstructorError(None, None,
+    #             "expected a mapping node, but found %s" % node.id,
+    #             node.start_mark)
+    pairs = []
+    for key_node, value_node in node.value:
+        key = str(self.construct_object(key_node, deep=deep))
+        value = self.construct_object(value_node, deep=deep)
+        pairs.append((key, value))
+    return pairs
+
 yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
 yaml.SafeLoader.construct_mapping = my_construct_mapping
+yaml.SafeLoader.construct_pairs = construct_pairs
+
 
 
 class YacAttMap(attmap.PathExAttMap):
