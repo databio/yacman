@@ -9,6 +9,19 @@ _LOGGER = logging.getLogger(__name__)
 
 FILEPATH_KEY = "_file_path"
 
+
+### Hack for string indexes of both ordered and unordered yaml representations
+# Credit: Anthon
+# https://stackoverflow.com/questions/50045617
+# https://stackoverflow.com/questions/5121931
+# The idea is: if you have yaml keys that can be interpreted as an int or a float,
+# then the yaml loader will convert them into an int or a float, and you would
+# need to access them with dict[2] instead of dict['2']. But since we always
+# expect the keys to be strings, this doesn't work. So, here we are adjusting
+# the loader to keep everything as a string. This happens in 2 ways, so that
+# it's compatible with both yaml and oyaml, which is the orderedDict version.
+# this will go away in python 3.7, because the dict representations will be
+# ordered by default.
 def my_construct_mapping(self, node, deep=False):
     data = self.construct_mapping_org(node, deep)
     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
@@ -28,7 +41,7 @@ def construct_pairs(self, node, deep=False):
 yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
 yaml.SafeLoader.construct_mapping = my_construct_mapping
 yaml.SafeLoader.construct_pairs = construct_pairs
-
+### End hack
 
 
 class YacAttMap(attmap.PathExAttMap):
@@ -100,18 +113,9 @@ class YacAttMap(attmap.PathExAttMap):
 
 
 def load_yaml(filename):
-    # Credit: Anthon
-    # https://stackoverflow.com/questions/50045617
     with open(filename, 'r') as f:
         data = yaml.safe_load(f)
     return data
-
-# y = load_yaml("/home/nsheff/Dropbox/env/bulker_config/puma.yaml")
-
-# f = "/home/nsheff/Dropbox/env/bulker_config/puma.yaml"
-# import yacman
-# y2 = yacman.YacAttMap(f)
-# y2["bulker"]["crates"]["databio"]["lab"]["1.0"]
 
 def get_first_env_var(ev):
     """
