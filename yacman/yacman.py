@@ -1,7 +1,7 @@
 import attmap
 import os
 from collections import Iterable
-import yaml as yaml
+import oyaml as yaml
 import logging
 
 _LOGGER = logging.getLogger(__name__)
