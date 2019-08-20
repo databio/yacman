@@ -26,7 +26,7 @@ def my_construct_mapping(self, node, deep=False):
     data = self.construct_mapping_org(node, deep)
     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
 
-def construct_pairs(self, node, deep=False):
+def my_construct_pairs(self, node, deep=False):
     # if not isinstance(node, MappingNode):
     #     raise ConstructorError(None, None,
     #             "expected a mapping node, but found %s" % node.id,
@@ -40,7 +40,7 @@ def construct_pairs(self, node, deep=False):
 
 yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
 yaml.SafeLoader.construct_mapping = my_construct_mapping
-yaml.SafeLoader.construct_pairs = construct_pairs
+yaml.SafeLoader.construct_pairs = my_construct_pairs
 ### End hack
 
 
