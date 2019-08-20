@@ -10,6 +10,40 @@ _LOGGER = logging.getLogger(__name__)
 FILEPATH_KEY = "_file_path"
 
 
+### Hack for string indexes of both ordered and unordered yaml representations
+# Credit: Anthon
+# https://stackoverflow.com/questions/50045617
+# https://stackoverflow.com/questions/5121931
+# The idea is: if you have yaml keys that can be interpreted as an int or a float,
+# then the yaml loader will convert them into an int or a float, and you would
+# need to access them with dict[2] instead of dict['2']. But since we always
+# expect the keys to be strings, this doesn't work. So, here we are adjusting
+# the loader to keep everything as a string. This happens in 2 ways, so that
+# it's compatible with both yaml and oyaml, which is the orderedDict version.
+# this will go away in python 3.7, because the dict representations will be
+# ordered by default.
+def my_construct_mapping(self, node, deep=False):
+    data = self.construct_mapping_org(node, deep)
+    return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
+
+def my_construct_pairs(self, node, deep=False):
+    # if not isinstance(node, MappingNode):
+    #     raise ConstructorError(None, None,
+    #             "expected a mapping node, but found %s" % node.id,
+    #             node.start_mark)
+    pairs = []
+    for key_node, value_node in node.value:
+        key = str(self.construct_object(key_node, deep=deep))
+        value = self.construct_object(value_node, deep=deep)
+        pairs.append((key, value))
+    return pairs
+
+yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
+yaml.SafeLoader.construct_mapping = my_construct_mapping
+yaml.SafeLoader.construct_pairs = my_construct_pairs
+### End hack
+
+
 class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and writing.
@@ -77,11 +111,11 @@ class YacAttMap(attmap.PathExAttMap):
             self._data_for_repr(), self._new_empty_basic_map),
             exclude_class_list="YacAttMap")
 
+
 def load_yaml(filename):
     with open(filename, 'r') as f:
-        data = yaml.load(f, yaml.SafeLoader)
+        data = yaml.safe_load(f)
     return data
-
 
 def get_first_env_var(ev):
     """

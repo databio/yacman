@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.5.1] -- Unreleased
+
+## [0.5.2] -- 2019-08-20
+- Force all indexes to be strings (not floats or ints).
+
+## [0.5.1] -- 2019-08-02
 - Allow providing a yaml string to constructor.
 
 ## [0.5.0] -- 2019-06-18

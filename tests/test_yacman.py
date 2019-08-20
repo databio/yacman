@@ -62,9 +62,101 @@ def test_write():
         yacmap_nofile.write()
 
 
+yaml_str = """\
+---
+one: 1
+2: two
+"""
+
+def test_float_idx():
+
+    data = yacman.YacAttMap(yamldata=yaml_str)
+    # We should be able to access this by string, not by int index.
+    assert(data['2'] == "two")
+    with pytest.raises(KeyError):
+        data[2]
+
 
 # import yacman
 # conf = yacman.load_yaml("conf.yaml")
 # conf
 # attmap.OrdAttMap(conf)
+
+
+# y = load_yaml("/home/nsheff/Dropbox/env/bulker_config/puma.yaml")
+
+# f = "/home/nsheff/Dropbox/env/bulker_config/puma.yaml"
+# import yacman
+# y2 = yacman.YacAttMap(f)
+# y2["bulker"]["crates"]["databio"]["lab"]["1.0"]
+
+
+
+
+# yaml_str = """\
+# ---
+# one: 1
+# 2: two
+# """
+# import yaml
+# import inspect
+# inspect.getsourcelines(yaml.SafeLoader.construct_mapping)
+# yaml.safe_load(yaml_str)
+
+
+# def my_construct_mapping(self, node, deep=False):
+#     data = self.construct_mapping_org(node, deep)
+#     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
+
+# def construct_pairs(self, node, deep=False):
+#     # if not isinstance(node, MappingNode):
+#     #     raise ConstructorError(None, None,
+#     #             "expected a mapping node, but found %s" % node.id,
+#     #             node.start_mark)
+#     pairs = []
+#     for key_node, value_node in node.value:
+#         key = str(self.construct_object(key_node, deep=deep))
+#         value = self.construct_object(value_node, deep=deep)
+#         pairs.append((key, value))
+#     return pairs
+
+# yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
+# yaml.SafeLoader.construct_mapping = my_construct_mapping
+# yaml.SafeLoader.construct_pairs = construct_pairs
+
+
+
+# yaml.safe_load(yaml_str)
+
+
+# import oyaml
+# inspect.getsourcelines(oyaml.SafeLoader.construct_mapping)
+
+
+# def map_constructor2(loader, node):
+#     loader.flatten_mapping(node)
+#     pairs = loader.construct_pairs(node)
+
+#     try:
+#         return OrderedDict(pairs)
+#     except TypeError:
+#         loader.construct_mapping(node)  # trigger any contextual error
+#         raise
+
+# pyyaml.add_constructor("tag:yaml.org,2002:map", map_constructor, Loader=yaml.SafeLoader)
+
+# oyaml.safe_load(yaml_str)
+# yaml.safe_load(yaml_str)
+
+
+
+
+# yaml.safe_load(yaml_str)
+
+
+# import ruamel.yaml
+# from ruamel.yaml import YAML
+# yaml = YAML()
+
+# yaml.load(yaml_str)
 
