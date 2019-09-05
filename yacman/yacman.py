@@ -3,6 +3,7 @@ import os
 from collections import Iterable
 import oyaml as yaml
 import logging
+from ubiquerg import mkabs
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class YacAttMap(attmap.PathExAttMap):
 
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
-            setattr(self, FILEPATH_KEY, filepath)
+            setattr(self, FILEPATH_KEY, mkabs(filepath))
 
     def write(self, filename=None):
         filename = filename or getattr(self, FILEPATH_KEY)
