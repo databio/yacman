@@ -80,10 +80,9 @@ class YacAttMap(attmap.PathExAttMap):
             entries = None
 
         if filepath:
-            setattr(self, RO_KEY, ro)
             # If user provides a string, it's probably a filename we should read
             # Check if user intends to update the file
-            if not getattr(self, RO_KEY):
+            if not ro:
                 # attempt to lock the file
                 lock_path = _make_lock_path(filepath)
                 if os.path.exists(lock_path):
@@ -110,6 +109,7 @@ class YacAttMap(attmap.PathExAttMap):
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
             setattr(self, FILEPATH_KEY, mkabs(filepath))
+            setattr(self, RO_KEY, ro)
 
     def write(self, filename=None):
         """
