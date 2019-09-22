@@ -1,7 +1,6 @@
 import attmap
 import os
 from collections import Iterable
-from pathlib import Path
 import oyaml as yaml
 import logging
 import errno
@@ -127,8 +126,9 @@ class YacAttMap(attmap.PathExAttMap):
         if hasattr(self, RO_KEY) and getattr(self, RO_KEY):
             raise OSError("You can't write to a file that was read in RO mode.")
         filename = filename or getattr(self, FILEPATH_KEY, None)
-        if not isinstance(filename, (str, Path)):
-            raise TypeError("No valid filename provided.")
+        if not isinstance(filename, str):
+            raise TypeError("No valid filename provided. It has to be a str, got: {}"
+                            .format(filename.__class__.__name__))
         lock = _make_lock_path(filename)
         if not hasattr(self, RO_KEY) and os.path.exists(lock):
             # if the object hasn't been created by reading from file, but a lock exists
