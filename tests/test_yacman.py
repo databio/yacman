@@ -114,3 +114,7 @@ def test_lock_created_and_removed_after_successful_write(name="conf.yaml"):
     cleanup_locks()
 
 
+def test_filename_required_when_object_created_from_mapping():
+    yacmap = yacman.YacAttMap({})
+    with pytest.raises(TypeError):
+        yacmap.write()

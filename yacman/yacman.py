@@ -1,6 +1,7 @@
 import attmap
 import os
 from collections import Iterable
+from pathlib import Path
 import oyaml as yaml
 import logging
 import errno
@@ -119,13 +120,15 @@ class YacAttMap(attmap.PathExAttMap):
 
         :param str filename: a file path to write to
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
+        :raise TypeError: when the filename cannot be determined.
+            This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
         :return str: the path to the created file
         """
         if hasattr(self, RO_KEY) and getattr(self, RO_KEY):
             raise OSError("You can't write to a file that was read in RO mode.")
-        filename = filename or getattr(self, FILEPATH_KEY)
-        if not filename:
-            raise Exception("No filename provided.")
+        filename = filename or getattr(self, FILEPATH_KEY, None)
+        if not isinstance(filename, (str, Path)):
+            raise TypeError("No valid filename provided.")
         lock = _make_lock_path(filename)
         if not hasattr(self, RO_KEY) and os.path.exists(lock):
             # if the object hasn't been created by reading from file, but a lock exists
