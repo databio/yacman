@@ -6,9 +6,13 @@ genomes:
     hisat2: indexed_hisat2
     tss_annotation: TSS.bed.gz
     gtf: blah.gtf
+    _ro: False
   mm10:
     bowtie2: indexed_bowtie2
     blacklist: blacklist/mm10.bed
+    _ro: False
   rCRSd:
     bowtie2: indexed_bowtie2
     bowtie: indexed_bowtie
+    _ro: False
+  _ro: False

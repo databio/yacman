@@ -15,6 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 FILEPATH_KEY = "_file_path"
 RO_KEY = "_ro"
 LOCK_PREFIX = "lock."
+DEFAULT_RO = False
 
 
 ### Hack for string indexes of both ordered and unordered yaml representations
@@ -68,10 +69,10 @@ class YacAttMap(attmap.PathExAttMap):
     :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None, filepath=None, yamldata=None, ro=False, wait_max=100):
+    def __init__(self, entries=None, filepath=None, yamldata=None, ro=DEFAULT_RO, wait_max=10):
 
         if isinstance(entries, str):
-            # If user provides a string, it's probably a filename we should read
+            # If user provides a string, it's probably a filepath we should read
             # This should be removed at a major version release now that the
             # filepath argument exists, but we retain it for backwards
             # compatibility
@@ -80,23 +81,10 @@ class YacAttMap(attmap.PathExAttMap):
             entries = None
 
         if filepath:
-            # If user provides a string, it's probably a filename we should read
+            # If user provides a string, it's probably a filepath we should read
             # Check if user intends to update the file
             if not ro:
-                # attempt to lock the file
-                lock_path = _make_lock_path(filepath)
-                if os.path.exists(lock_path):
-                    raise OSError("The file is locked: {}".format(filepath))
-                else:
-                    try:
-                        _create_file_racefree(lock_path)
-                    except OSError as e:
-                        if e.errno == errno.EEXIST:
-                            # Rare case: file already exists;
-                            # the lock has been created in the split second since the last lock existence check,
-                            # wait for the lock file to be gone, but no longer than `wait_max`.
-                            print("Could not create a lock file, it already exists: {}".format(lock_path))
-                            _wait_for_lock(lock_path, wait_max)
+                _make_rw(filepath, wait_max)
             file_contents = load_yaml(filepath)
             if entries:
                 file_contents.update(entries)
@@ -111,13 +99,13 @@ class YacAttMap(attmap.PathExAttMap):
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, ro)
 
-    def write(self, filename=None):
+    def write(self, filepath=None):
         """
         Writes the contents to a file.
 
         Makes sure that the object has been created with write capabilities
 
-        :param str filename: a file path to write to
+        :param str filepath: a file path to write to
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
         :raise TypeError: when the filename cannot be determined.
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
@@ -125,18 +113,15 @@ class YacAttMap(attmap.PathExAttMap):
         """
         if hasattr(self, RO_KEY) and getattr(self, RO_KEY):
             raise OSError("You can't write to a file that was read in RO mode.")
-        filename = filename or getattr(self, FILEPATH_KEY, None)
-        if not isinstance(filename, str):
-            raise TypeError("No valid filename provided. It has to be a str, got: {}"
-                            .format(filename.__class__.__name__))
-        lock = _make_lock_path(filename)
+        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        lock = _make_lock_path(filepath)
         if not hasattr(self, RO_KEY) and os.path.exists(lock):
             # if the object hasn't been created by reading from file, but a lock exists
             raise OSError("You can't write to a file that was locked by a different process.")
-        with open(filename, 'w') as f:
+        with open(filepath, 'w') as f:
             f.write(self.to_yaml())
         self.unlock()
-        return os.path.abspath(filename)
+        return os.path.abspath(filepath)
 
     def unlock(self):
         """
@@ -152,6 +137,28 @@ class YacAttMap(attmap.PathExAttMap):
                 return True
         return False
 
+    def make_rw(self, filepath=None):
+        """
+        Grant write capabilities to the object
+
+        :param str filepath: path to the file that the contents will be written to
+        """
+        if not getattr(self, RO_KEY, True):
+            return
+        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        _make_rw(filepath or getattr(self, FILEPATH_KEY, None))
+        setattr(self, RO_KEY, False)
+        setattr(self, FILEPATH_KEY, filepath)
+
+    def make_ro(self):
+        """
+        Prohibit writing
+        """
+        if getattr(self, RO_KEY, DEFAULT_RO):
+            return
+        self.unlock()
+        setattr(self, RO_KEY, True)
+
     @property
     def _lower_type_bound(self):
         """ Most specific type to which an inserted value may be converted """
@@ -166,6 +173,13 @@ class YacAttMap(attmap.PathExAttMap):
 
     def _excl_from_repr(self, k, cls):
         return k in (FILEPATH_KEY, RO_KEY)
+
+
+def _check_filepath(filepath):
+    if not isinstance(filepath, str):
+        raise TypeError("No valid filepath provided. It has to be a str, got: {}"
+                        .format(filepath.__class__.__name__))
+    return filepath
 
 
 def _wait_for_lock(lock_file, wait_max):
@@ -222,6 +236,23 @@ def _make_lock_path(lock_name_base):
     base, name = os.path.split(lock_name_base)
     lock_name = name if name.startswith(LOCK_PREFIX) else LOCK_PREFIX + name
     return lock_name if not base else os.path.join(base, lock_name)
+
+
+def _make_rw(filepath, wait_max=10):
+    # attempt to lock the file
+    lock_path = _make_lock_path(filepath)
+    if os.path.exists(lock_path):
+        _wait_for_lock(lock_path, wait_max)
+    else:
+        try:
+            _create_file_racefree(lock_path)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                # Rare case: file already exists;
+                # the lock has been created in the split second since the last lock existence check,
+                # wait for the lock file to be gone, but no longer than `wait_max`.
+                print("Could not create a lock file, it already exists: {}".format(lock_path))
+                _wait_for_lock(lock_path, wait_max)
 
 
 def load_yaml(filename):
