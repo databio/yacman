@@ -135,10 +135,22 @@ class YacAttMap(attmap.PathExAttMap):
             raise OSError("You can't write to a file that was locked by a different process.")
         with open(filename, 'w') as f:
             f.write(self.to_yaml())
-        if os.path.exists(lock):
-            # remove the lock after writing
-            os.remove(lock)
+        self.unlock()
         return os.path.abspath(filename)
+
+    def unlock(self):
+        """
+        Remove lock
+
+        :return bool: a logical indicating whether any locks were removed
+        """
+        filename = getattr(self, FILEPATH_KEY, None)
+        if filename is not None:
+            lock = _make_lock_path(filename)
+            if os.path.exists(lock):
+                os.remove(lock)
+                return True
+        return False
 
     @property
     def _lower_type_bound(self):

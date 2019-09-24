@@ -118,3 +118,11 @@ def test_filename_required_when_object_created_from_mapping():
     yacmap = yacman.YacAttMap({})
     with pytest.raises(TypeError):
         yacmap.write()
+
+
+def test_unlock(name="conf.yaml"):
+    yacmap = yacman.YacAttMap({})
+    assert not yacmap.unlock()
+    yacmap = yacman.YacAttMap(name, ro=False)
+    assert yacmap.unlock()
+    assert len(get_locks()) == 0
