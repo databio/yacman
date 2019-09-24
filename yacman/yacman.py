@@ -142,22 +142,27 @@ class YacAttMap(attmap.PathExAttMap):
         Grant write capabilities to the object
 
         :param str filepath: path to the file that the contents will be written to
+        :return YacAttMap: updated object
         """
         if not getattr(self, RO_KEY, True):
-            return
+            return self
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        _make_rw(filepath or getattr(self, FILEPATH_KEY, None))
+        _make_rw(filepath)
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
+        return self
 
     def make_ro(self):
         """
         Prohibit writing
+
+        :return YacAttMap: updated object
         """
-        if getattr(self, RO_KEY, DEFAULT_RO):
-            return
+        if getattr(self, RO_KEY, False):
+            return self
         self.unlock()
         setattr(self, RO_KEY, True)
+        return self
 
     @property
     def _lower_type_bound(self):
