@@ -79,17 +79,20 @@ class YacAttMap(attmap.PathExAttMap):
         if filepath:
             # Check if user intends to update the file and wants to use the locking system
             if use_locks:
-                setattr(self, USE_LOCKS_KEY, True)
                 if not ro:
                     _make_rw(filepath, wait_max)
             entries = load_yaml(filepath)
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, ro)
 
         if yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
-        super().__init__(entries=entries)
+        super(YacAttMap, self).__init__(entries or {})
+        if filepath:
+            # Check if user intends to update the file and wants to use the locking system
+            if use_locks:
+                setattr(self, USE_LOCKS_KEY, True)
+            setattr(self, FILEPATH_KEY, mkabs(filepath))
+            setattr(self, RO_KEY, ro)
 
     def write(self, filepath=None):
         """

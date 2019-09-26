@@ -21,7 +21,5 @@ def locked_cfg_file(data_path):
 
 @pytest.fixture
 def list_locks(data_path):
-    print("getting locks in: {}".format(data_path))
-    print(glob(os.path.join(data_path, "lock.*")))
     return glob(os.path.join(data_path, "lock.*"))
 
