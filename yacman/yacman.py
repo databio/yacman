@@ -72,10 +72,11 @@ class YacAttMap(attmap.PathExAttMap):
     """
 
     def __init__(self, entries=None, filepath=None, yamldata=None, use_locks=False, ro=False, wait_max=10):
-        if isinstance(entries, str):
-            # special case, in previous versions we allowed the entries to be a str and treated it as the file path
-            # we do not do that anymore, but throw an error instead
-            raise TypeError("The entries argument should be a dict. If you want to read a file, use the filepath arg")
+        if isinstance(entries, str) and os.path.exists(entries):
+            warnings.warn("The entries argument should be a dict. If you want to read a file, use the filepath arg.",
+                          category=DeprecationWarning)
+            filepath = entries
+            entries = None
         if filepath:
             # Check if user intends to update the file and wants to use the locking system
             if use_locks:
