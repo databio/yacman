@@ -6,6 +6,7 @@ import logging
 import errno
 import time
 import sys
+import warnings
 from ubiquerg import mkabs
 
 
@@ -15,6 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 FILEPATH_KEY = "_file_path"
 RO_KEY = "_ro"
 LOCK_PREFIX = "lock."
+USE_LOCKS_KEY = "_locks"
 DEFAULT_RO = False
 
 
@@ -69,35 +71,25 @@ class YacAttMap(attmap.PathExAttMap):
     :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None, filepath=None, yamldata=None, ro=DEFAULT_RO, wait_max=10):
-
+    def __init__(self, entries=None, filepath=None, yamldata=None, use_locks=False, ro=False, wait_max=10):
         if isinstance(entries, str):
-            # If user provides a string, it's probably a filepath we should read
-            # This should be removed at a major version release now that the
-            # filepath argument exists, but we retain it for backwards
-            # compatibility
-            _LOGGER.debug("The entries argument should be a dict. If you want to read a file, use the filepath arg")
-            filepath = entries
-            entries = None
-
+            # special case, in previous versions we allowed the entries to be a str and treated it as the file path
+            # we do not do that anymore, but throw an error instead
+            raise TypeError("The entries argument should be a dict. If you want to read a file, use the filepath arg")
         if filepath:
-            # If user provides a string, it's probably a filepath we should read
-            # Check if user intends to update the file
-            if not ro:
-                _make_rw(filepath, wait_max)
-            file_contents = load_yaml(filepath)
-            if entries:
-                file_contents.update(entries)
-
-            entries = file_contents
+            # Check if user intends to update the file and wants to use the locking system
+            if use_locks:
+                setattr(self, USE_LOCKS_KEY, True)
+                if not ro:
+                    _make_rw(filepath, wait_max)
+            entries = load_yaml(filepath)
+            setattr(self, FILEPATH_KEY, mkabs(filepath))
+            setattr(self, RO_KEY, ro)
 
         if yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
-        super(YacAttMap, self).__init__(entries or {})
-        if filepath:
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, ro)
+        super().__init__(entries=entries)
 
     def write(self, filepath=None):
         """
@@ -109,18 +101,20 @@ class YacAttMap(attmap.PathExAttMap):
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
         :raise TypeError: when the filename cannot be determined.
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
-        :return str: the path to the created file
+        :return str: the path to the created files
         """
-        if hasattr(self, RO_KEY) and getattr(self, RO_KEY):
+        use_locks = hasattr(self, USE_LOCKS_KEY)
+        if use_locks and getattr(self, RO_KEY, False):
             raise OSError("You can't write to a file that was read in RO mode.")
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = _make_lock_path(filepath)
-        if not hasattr(self, RO_KEY) and os.path.exists(lock):
-            # if the object hasn't been created by reading from file, but a lock exists
-            raise OSError("You can't write to a file that was locked by a different process.")
+        if os.path.exists(lock) and not use_locks:
+            warnings.warn("Writing to a file that is locked, set use_locks argument to True to respect the locks. "
+                          "Lock path: {}".format(lock))
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
-        self.unlock()
+        if use_locks:
+            self.unlock()
         return os.path.abspath(filepath)
 
     def unlock(self):
@@ -144,7 +138,7 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file that the contents will be written to
         :return YacAttMap: updated object
         """
-        if not getattr(self, RO_KEY, True):
+        if getattr(self, USE_LOCKS_KEY, False) and not getattr(self, RO_KEY, True):
             return self
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         _make_rw(filepath)
@@ -158,7 +152,7 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return YacAttMap: updated object
         """
-        if getattr(self, RO_KEY, False):
+        if getattr(self, RO_KEY, False) or not getattr(self, USE_LOCKS_KEY, True):
             return self
         self.unlock()
         setattr(self, RO_KEY, True)
@@ -177,7 +171,7 @@ class YacAttMap(attmap.PathExAttMap):
                             exclude_class_list="YacAttMap")
 
     def _excl_from_repr(self, k, cls):
-        return k in (FILEPATH_KEY, RO_KEY)
+        return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
 
 
 def _check_filepath(filepath):
