@@ -113,3 +113,20 @@ def test_warnings(cfg_file):
         yacman.YacAttMap({})
     with pytest.warns(DeprecationWarning):
         yacman.YacAttMap(entries=cfg_file)
+
+
+def test_locking_is_opt_in(cfg_file, locked_cfg_file):
+    """
+    this tests backwards compatibility, in the past the locking system did not exist.
+    Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to the file
+    when no arguments but the intput are specified
+    """
+    yacmap = yacman.YacAttMap(filepath=cfg_file)
+    yacmap1 = yacman.YacAttMap(filepath=cfg_file)
+    yacmap2 = yacman.YacAttMap(entries={})
+    yacmap.write()
+    yacmap1.write()
+    with pytest.raises(TypeError):
+        yacmap2.write()
+    yacmap2.write(filepath=cfg_file)
+    assert not os.path.exists(locked_cfg_file)
