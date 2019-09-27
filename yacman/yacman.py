@@ -102,7 +102,7 @@ class YacAttMap(attmap.PathExAttMap):
 
         :param str filepath: a file path to write to
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
-        :raise TypeError: when the filename cannot be determined.
+        :raise TypeError: when the filepath cannot be determined.
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
         :return str: the path to the created files
         """
@@ -158,29 +158,29 @@ def _check_filepath(filepath):
 
 def _wait_for_lock(lock_file, wait_max):
     """
-    Just sleep until the lock_file does not exist or a lock_file-related dynamic recovery flag is spotted
+    Just sleep until the lock_file does not exist
 
     :param str lock_file: Lock file to wait upon.
     """
-    sleeptime = .5
+    sleeptime = .001
     first_message_flag = False
     dot_count = 0
     totaltime = 0
     while os.path.isfile(lock_file):
         if first_message_flag is False:
-            print("Waiting for file lock: " + lock_file)
+            sys.stdout.write("Waiting for file lock: {} ".format(lock_file))
             first_message_flag = True
         else:
             sys.stdout.write(".")
-            dot_count = dot_count + 1
+            dot_count += 1
             if dot_count % 60 == 0:
                 sys.stdout.write("")
+        sys.stdout.flush()
         time.sleep(sleeptime)
         totaltime += sleeptime
-        sleeptime = min(sleeptime + 2.5, 20)
+        sleeptime = min((sleeptime + .2) * 2, 10)
         if totaltime >= wait_max:
-            raise RuntimeError("The maximum wait time has been reached")
-
+            raise RuntimeError("The maximum wait time has been reached and the lock file still exists.")
     if first_message_flag:
         print("File unlocked")
 
@@ -229,8 +229,14 @@ def _make_rw(filepath, wait_max=10):
                 _wait_for_lock(lock_path, wait_max)
 
 
-def load_yaml(filename):
-    with open(filename, 'r') as f:
+def load_yaml(filepath):
+    """
+    Read a YAML file
+
+    :param str filepath: path to the file to read
+    :return dict: read data
+    """
+    with open(filepath, 'r') as f:
         data = yaml.safe_load(f)
     return data
 
