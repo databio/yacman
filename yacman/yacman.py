@@ -71,28 +71,46 @@ class YacAttMap(attmap.PathExAttMap):
     :param str filepath: YAML filepath to the config file.
     """
 
-    def __init__(self, entries=None, filepath=None, yamldata=None, use_locks=False, ro=False, wait_max=10):
+    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=10):
         if isinstance(entries, str) and os.path.exists(entries):
             warnings.warn("The entries argument should be a dict. If you want to read a file, use the filepath arg.",
                           category=DeprecationWarning)
             filepath = entries
             entries = None
-        if filepath:
-            # Check if user intends to update the file and wants to use the locking system
-            if use_locks and not ro:
+
+        if writable:
+            if filepath:
                 _make_rw(filepath, wait_max)
+            else:
+                warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
+                              " read from the 'filepath'")
+        if filepath:
             entries = load_yaml(filepath)
-        if filepath is None and any((use_locks, ro)):
-            warnings.warn("Arguments 'use_locks' and 'ro' are disregarded when the object is created with entries "
-                          "rather than read from the 'filepath'")
+            setattr(self, FILEPATH_KEY, mkabs(filepath))
+            setattr(self, RO_KEY, not writable)
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
         super(YacAttMap, self).__init__(entries or {})
-        if filepath:
-            setattr(self, USE_LOCKS_KEY, use_locks)
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, ro)
+
+    def __del__(self):
+        if hasattr(self, FILEPATH_KEY):
+            self.unlock()
+
+    def __repr__(self):
+        # Here we want to render the data in a nice way; and we want to indicate
+        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
+        # to give you the data without the class name.
+        return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
+                            exclude_class_list="YacAttMap")
+
+    def _excl_from_repr(self, k, cls):
+        return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
+
+    @property
+    def _lower_type_bound(self):
+        """ Most specific type to which an inserted value may be converted """
+        return YacAttMap
 
     def write(self, filepath=None):
         """
@@ -106,18 +124,21 @@ class YacAttMap(attmap.PathExAttMap):
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
         :return str: the path to the created files
         """
-        use_locks = getattr(self, USE_LOCKS_KEY, False)
         if getattr(self, RO_KEY, False):
-            raise OSError("You can't write to a file that was read in RO mode.")
+            raise OSError("You can't write using and object that was created in read-only mode.")
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = _make_lock_path(filepath)
-        if os.path.exists(lock) and not use_locks:
-            warnings.warn("Writing to a file that is locked, set use_locks argument to True to respect the locks. "
-                          "Lock path: {}".format(lock))
+        if filepath != getattr(self, FILEPATH_KEY, None):
+            if os.path.exists(filepath):
+                if not os.path.exists(lock):
+                    warnings.warn("Writing to a non-locked file, watch out for collisions.", UserWarning)
+                else:
+                    raise OSError("The file '{}' is locked by a different process".format(filepath))
+            self.unlock()
+            setattr(self, FILEPATH_KEY, filepath)
+            _make_rw(filepath)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
-        if use_locks:
-            self.unlock(filepath)
         return os.path.abspath(filepath)
 
     def unlock(self, filepath=None):
@@ -133,26 +154,21 @@ class YacAttMap(attmap.PathExAttMap):
             return True
         return False
 
-    @property
-    def _lower_type_bound(self):
-        """ Most specific type to which an inserted value may be converted """
-        return YacAttMap
-
-    def __repr__(self):
-        # Here we want to render the data in a nice way; and we want to indicate
-        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
-        # to give you the data without the class name.
-        return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
-                            exclude_class_list="YacAttMap")
-
-    def _excl_from_repr(self, k, cls):
-        return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
-
 
 def _check_filepath(filepath):
+    """
+    Validate if the filepath attr/arg is a str
+
+    :param str filepath: object to validate
+    :return str: validated filepath
+    :raise TypeError: if the filepath is not a string
+    """
+    # might be useful if we want to have multiple locked paths in the future
+    # def _check_string(obj):
+    #     """ check if object is a string or a list of strings """
+    #     return bool(obj) and all(isinstance(elem, str) for elem in obj)
     if not isinstance(filepath, str):
-        raise TypeError("No valid filepath provided. It has to be a str, got: {}"
-                        .format(filepath.__class__.__name__))
+        raise TypeError("No valid filepath provided. It has to be a str, got: {}".format(filepath.__class__.__name__))
     return filepath
 
 
@@ -202,14 +218,16 @@ def _create_file_racefree(file):
 
 def _make_lock_path(lock_name_base):
     """
-    Create path to lock file with given name as base.
+    Create a collection of path to locks file with given name as bases.
 
-    :param str lock_name_base: Lock file name
-    :return str: Path to the lock file.
+    :param str | list[str] lock_name_base: Lock file names
+    :return str| list[str]: Path to the lock files.
     """
-    base, name = os.path.split(lock_name_base)
-    lock_name = name if name.startswith(LOCK_PREFIX) else LOCK_PREFIX + name
-    return lock_name if not base else os.path.join(base, lock_name)
+    def _mk_lock(lnb):
+        base, name = os.path.split(lnb)
+        lock_name = name if name.startswith(LOCK_PREFIX) else LOCK_PREFIX + name
+        return lock_name if not base else os.path.join(base, lock_name)
+    return [_mk_lock(x) for x in lock_name_base] if isinstance(lock_name_base, list) else _mk_lock(lock_name_base)
 
 
 def _make_rw(filepath, wait_max=10):
@@ -227,6 +245,7 @@ def _make_rw(filepath, wait_max=10):
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 print("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
+    print("Created lock file: {}".format(lock_path))
 
 
 def load_yaml(filepath):
