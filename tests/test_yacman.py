@@ -27,8 +27,8 @@ def test_entries_update(cfg_file, list_locks):
     conf = yacman.load_yaml(cfg_file)
     yacmap = yacman.YacAttMap(filepath=cfg_file, ro=True)
     yacmap = yacman.YacAttMap(filepath=cfg_file, ro=True)
-    yacmap = yacman.YacAttMap(entries={"entry": "updated"}, ro=True)
-    yacmap = yacman.YacAttMap(entries={"genome_folder": "updated"}, ro=True)
+    yacmap = yacman.YacAttMap(entries={"entry": "updated"})
+    yacmap = yacman.YacAttMap(entries={"genome_folder": "updated"})
     assert(yacmap.genome_folder == "updated")
     yacmap = yacman.YacAttMap()
     cleanup_locks(list_locks)
@@ -91,24 +91,25 @@ def test_filename_required_when_object_created_from_mapping():
         yacmap.write()
 
 
-def test_unlock(cfg_file, list_locks):
+def test_unlock_errors_when_no_filepath_provided(cfg_file):
     yacmap = yacman.YacAttMap({})
-    assert not yacmap.unlock()
+    with pytest.raises(TypeError):
+        yacmap.unlock()
+
+
+def test_unlock_removes_lock_and_returns_true(cfg_file, list_locks):
     yacmap = yacman.YacAttMap(filepath=cfg_file, use_locks=True, ro=False)
     assert yacmap.unlock()
     assert len(list_locks) == 0
 
 
-def test_make_ro(cfg_file, list_locks):
-    yacmap = yacman.YacAttMap(filepath=cfg_file, ro=False)
-    yacmap.make_ro()
-    assert len(list_locks) == 0
+def test_unlock_returns_false_if_nothing_unlocked(cfg_file):
+    yacmap = yacman.YacAttMap(filepath=cfg_file)
+    assert not yacmap.unlock()
 
 
-def test_make_rw(cfg_file, list_locks, locked_cfg_file):
-    yacmap = yacman.YacAttMap({}, ro=True)
-    with pytest.raises(TypeError):
-        yacmap.make_rw()
-    yacmap.make_rw(cfg_file)
-    assert os.path.exists(locked_cfg_file)
-    cleanup_locks([locked_cfg_file])
+def test_warnings(cfg_file):
+    with pytest.warns(None):
+        yacman.YacAttMap({})
+    with pytest.warns(DeprecationWarning):
+        yacman.YacAttMap(entries=cfg_file)

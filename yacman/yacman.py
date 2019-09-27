@@ -79,19 +79,18 @@ class YacAttMap(attmap.PathExAttMap):
             entries = None
         if filepath:
             # Check if user intends to update the file and wants to use the locking system
-            if use_locks:
-                if not ro:
-                    _make_rw(filepath, wait_max)
+            if use_locks and not ro:
+                _make_rw(filepath, wait_max)
             entries = load_yaml(filepath)
-
-        if yamldata:
+        if filepath is None and any((use_locks, ro)):
+            warnings.warn("Arguments 'use_locks' and 'ro' are disregarded when the object is created with entries "
+                          "rather than read from the 'filepath'")
+        elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
-            # Check if user intends to update the file and wants to use the locking system
-            if use_locks:
-                setattr(self, USE_LOCKS_KEY, True)
+            setattr(self, USE_LOCKS_KEY, use_locks)
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, ro)
 
@@ -107,8 +106,8 @@ class YacAttMap(attmap.PathExAttMap):
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
         :return str: the path to the created files
         """
-        use_locks = hasattr(self, USE_LOCKS_KEY)
-        if use_locks and getattr(self, RO_KEY, False):
+        use_locks = getattr(self, USE_LOCKS_KEY, False)
+        if getattr(self, RO_KEY, False):
             raise OSError("You can't write to a file that was read in RO mode.")
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = _make_lock_path(filepath)
@@ -118,49 +117,21 @@ class YacAttMap(attmap.PathExAttMap):
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
         if use_locks:
-            self.unlock()
+            self.unlock(filepath)
         return os.path.abspath(filepath)
 
-    def unlock(self):
+    def unlock(self, filepath=None):
         """
         Remove lock
 
         :return bool: a logical indicating whether any locks were removed
         """
-        filename = getattr(self, FILEPATH_KEY, None)
-        if filename is not None:
-            lock = _make_lock_path(filename)
-            if os.path.exists(lock):
-                os.remove(lock)
-                return True
+        filename = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        lock = _make_lock_path(filename)
+        if os.path.exists(lock):
+            os.remove(lock)
+            return True
         return False
-
-    def make_rw(self, filepath=None):
-        """
-        Grant write capabilities to the object
-
-        :param str filepath: path to the file that the contents will be written to
-        :return YacAttMap: updated object
-        """
-        if getattr(self, USE_LOCKS_KEY, False) and not getattr(self, RO_KEY, True):
-            return self
-        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        _make_rw(filepath)
-        setattr(self, RO_KEY, False)
-        setattr(self, FILEPATH_KEY, filepath)
-        return self
-
-    def make_ro(self):
-        """
-        Prohibit writing
-
-        :return YacAttMap: updated object
-        """
-        if getattr(self, RO_KEY, False) or not getattr(self, USE_LOCKS_KEY, True):
-            return self
-        self.unlock()
-        setattr(self, RO_KEY, True)
-        return self
 
     @property
     def _lower_type_bound(self):
