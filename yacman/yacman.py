@@ -83,15 +83,18 @@ class YacAttMap(attmap.PathExAttMap):
                 _make_rw(filepath, wait_max)
             else:
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
-                              " read from the 'filepath'")
+                              " read from the 'filepath'", UserWarning)
         if filepath:
             entries = load_yaml(filepath)
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, not writable)
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
         super(YacAttMap, self).__init__(entries or {})
+        if filepath:
+            # to make this python2 compatible, the attributes need to be set here.
+            # prevents: AttributeError: _OrderedDict__root
+            setattr(self, FILEPATH_KEY, mkabs(filepath))
+            setattr(self, RO_KEY, not writable)
 
     def __del__(self):
         if hasattr(self, FILEPATH_KEY):
@@ -134,8 +137,8 @@ class YacAttMap(attmap.PathExAttMap):
                     warnings.warn("Writing to a non-locked file, watch out for collisions.", UserWarning)
                 else:
                     raise OSError("The file '{}' is locked by a different process".format(filepath))
-            self.unlock()
             setattr(self, FILEPATH_KEY, filepath)
+            self.unlock()
             _make_rw(filepath)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
