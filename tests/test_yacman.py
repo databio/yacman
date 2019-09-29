@@ -2,6 +2,7 @@ import pytest
 import yacman
 import os
 
+
 class TestWriting:
     def test_basic_write(self, cfg_file, list_locks, data_path, locked_cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
@@ -87,10 +88,10 @@ class TestReading:
     def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):
         """
         this tests backwards compatibility, in the past the locking system did not exist.
-        Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to the file
-        when no arguments but the intput are specified
+        Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to
+        the file when no arguments but the intput are specified
         """
-        y = yacman.YacAttMap(filepath=cfg_file)
+        yacman.YacAttMap(filepath=cfg_file)
         assert not os.path.exists(locked_cfg_file)
 
 

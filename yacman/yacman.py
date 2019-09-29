@@ -248,7 +248,6 @@ def _make_rw(filepath, wait_max=10):
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 print("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
-    print("Created lock file: {}".format(lock_path))
 
 
 def load_yaml(filepath):
