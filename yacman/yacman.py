@@ -99,9 +99,12 @@ class YacAttMap(attmap.PathExAttMap):
             # prevents: AttributeError: _OrderedDict__root
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, not writable)
+        else:
+            # if the object has been created from a mapping, we make it writable
+            setattr(self, RO_KEY, False)
 
     def __del__(self):
-        if hasattr(self, FILEPATH_KEY):
+        if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
             self.unlock()
 
     def __repr__(self):
