@@ -125,6 +125,8 @@ class YacAttMap(attmap.PathExAttMap):
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
         :raise TypeError: when the filepath cannot be determined.
             This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
+        :raise OSError: when the write is called on an object with no write capabilities
+            or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
         if getattr(self, RO_KEY, False):
@@ -240,6 +242,7 @@ def _make_rw(filepath, wait_max=10):
         _wait_for_lock(lock_path, wait_max)
     else:
         try:
+            print("creating lockfile")
             _create_file_racefree(lock_path)
         except OSError as e:
             if e.errno == errno.EEXIST:
@@ -248,6 +251,7 @@ def _make_rw(filepath, wait_max=10):
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 print("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
+        print("lockfile created: {}".format(lock_path))
 
 
 def load_yaml(filepath):
