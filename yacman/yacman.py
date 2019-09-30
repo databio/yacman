@@ -56,25 +56,25 @@ yaml.SafeLoader.construct_pairs = my_construct_pairs
 
 class YacAttMap(attmap.PathExAttMap):
     """
-    A class that extends AttMap to provide yaml reading and writing.
+    A class that extends AttMap to provide yaml reading and race-free writing in multi-user contexts.
 
-    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a
-    python representation of your YAML configuration file, that can do a lot of
-    cool stuff. You can access the hierarchical YAML attributes with dot
-    notation or dict notation. You can read and write YAML config files with
-    easy functions. It also retains memory of the its source filepath. If both a
-    filepath and an entries dict are provided, it will first load the file
+    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a python representation of your YAML
+    configuration file, that can do a lot of cool stuff. You can access the hierarchical YAML attributes with dot
+    notation or dict notation. You can read and write YAML config files with easy functions. It also retains memory
+    of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
 
-    :param str | Iterable[(str, object)] | Mapping[str, object] entries: YAML
-        filepath or collection of key-value pairs.
+    :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection of key-value pairs.
     :param str filepath: YAML filepath to the config file.
+    :param str yamldata: YAML-formatted string
+    :param bool writable: whether to create the object with write capabilities
+    :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
     """
 
     def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=10):
         if isinstance(entries, str) and os.path.exists(entries):
-            warnings.warn("The entries argument should be a dict. If you want to read a file, use the filepath arg.",
-                          category=DeprecationWarning)
+            warnings.warn("The entries argument should be a dict. If you want to read a file, "
+                          "use the filepath argument.", category=DeprecationWarning)
             filepath = entries
             entries = None
 
@@ -85,7 +85,11 @@ class YacAttMap(attmap.PathExAttMap):
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            entries = load_yaml(filepath)
+            file_contents = load_yaml(filepath)
+            if entries:
+                file_contents.update(entries)
+            entries = file_contents
+
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
 
@@ -130,7 +134,7 @@ class YacAttMap(attmap.PathExAttMap):
         :return str: the path to the created files
         """
         if getattr(self, RO_KEY, False):
-            raise OSError("You can't write using and object that was created in read-only mode.")
+            raise OSError("You can't call write on an object that was created in read-only mode.")
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = _make_lock_path(filepath)
         if filepath != getattr(self, FILEPATH_KEY, None):

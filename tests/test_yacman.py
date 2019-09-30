@@ -94,6 +94,12 @@ class TestReading:
         yacman.YacAttMap(filepath=cfg_file)
         assert not os.path.exists(locked_cfg_file)
 
+    def test_on_init_file_update(self, cfg_file):
+        a, v = "testattr", "testval"
+        y = yacman.YacAttMap(entries={a: v}, filepath=cfg_file)
+        assert y[a] == v
+
+
 
 yaml_str = """\
 ---
