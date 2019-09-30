@@ -20,7 +20,7 @@ USE_LOCKS_KEY = "_locks"
 DEFAULT_RO = False
 
 
-### Hack for string indexes of both ordered and unordered yaml representations
+# Hack for string indexes of both ordered and unordered yaml representations
 # Credit: Anthon
 # https://stackoverflow.com/questions/50045617
 # https://stackoverflow.com/questions/5121931
@@ -36,11 +36,8 @@ def my_construct_mapping(self, node, deep=False):
     data = self.construct_mapping_org(node, deep)
     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
 
+
 def my_construct_pairs(self, node, deep=False):
-    # if not isinstance(node, MappingNode):
-    #     raise ConstructorError(None, None,
-    #             "expected a mapping node, but found %s" % node.id,
-    #             node.start_mark)
     pairs = []
     for key_node, value_node in node.value:
         key = str(self.construct_object(key_node, deep=deep))
@@ -48,10 +45,11 @@ def my_construct_pairs(self, node, deep=False):
         pairs.append((key, value))
     return pairs
 
+
 yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
 yaml.SafeLoader.construct_mapping = my_construct_mapping
 yaml.SafeLoader.construct_pairs = my_construct_pairs
-### End hack
+# End hack
 
 
 class YacAttMap(attmap.PathExAttMap):
@@ -63,15 +61,17 @@ class YacAttMap(attmap.PathExAttMap):
     notation or dict notation. You can read and write YAML config files with easy functions. It also retains memory
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
-
-    :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection of key-value pairs.
-    :param str filepath: YAML filepath to the config file.
-    :param str yamldata: YAML-formatted string
-    :param bool writable: whether to create the object with write capabilities
-    :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
     """
-
     def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=10):
+        """
+        Object constructor
+
+        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection of key-value pairs.
+        :param str filepath: YAML filepath to the config file.
+        :param str yamldata: YAML-formatted string
+        :param bool writable: whether to create the object with write capabilities
+        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
+        """
         if isinstance(entries, str) and os.path.exists(entries):
             warnings.warn("The entries argument should be a dict. If you want to read a file, "
                           "use the filepath argument.", category=DeprecationWarning)
