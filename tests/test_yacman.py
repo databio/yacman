@@ -28,14 +28,16 @@ class TestWriting:
         os.remove(filepath)
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
-    def test_warn_on_write_when_not_locked(self, name, data_path, cfg_file):
-        yacmap = yacman.YacAttMap(entries={})
+    def test_warn_on_write_when_not_locked(self, name, data_path, cfg_file, locked_cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         filename = make_cfg_file_path(name, data_path)
         f = os.open(filename, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.close(f)
-        with pytest.warns(None):
+        with pytest.warns(UserWarning):
             yacmap.write(filename)
         os.remove(filename)
+        assert os.path.exists(make_lock_path(name, data_path))
+        assert not os.path.exists(locked_cfg_file)
 
 
 class TestExceptions:
@@ -54,6 +56,14 @@ class TestExceptions:
         with pytest.raises(TypeError):
             yacmap.unlock()
 
+    def test_warnings(self, cfg_file):
+        with pytest.warns(None):
+            yacman.YacAttMap({}, writable=True)
+        with pytest.warns(DeprecationWarning):
+            yacman.YacAttMap(entries=cfg_file)
+
+
+class TestManipulationMethods:
     def test_unlock_removes_lock_and_returns_true(self, cfg_file, list_locks):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         assert yacmap.unlock()
@@ -63,11 +73,26 @@ class TestExceptions:
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         assert not yacmap.unlock()
 
-    def test_warnings(self, cfg_file):
-        with pytest.warns(None):
-            yacman.YacAttMap({}, writable=True)
-        with pytest.warns(DeprecationWarning):
-            yacman.YacAttMap(entries=cfg_file)
+    def test_make_writable_doesnt_change_already_writable_objects(self, cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert yacmap == yacmap.make_writable()
+
+    def test_make_writable_makes_object_writable(self, cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable()
+        assert not getattr(yacmap, yacman.RO_KEY, True)
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_changes_filepath(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert getattr(yacmap, yacman.FILEPATH_KEY) != cfg_file
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_creates_locks(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert os.path.exists(make_lock_path(name, data_path))
 
 
 class TestReading:

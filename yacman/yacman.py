@@ -140,11 +140,12 @@ class YacAttMap(attmap.PathExAttMap):
         if filepath != getattr(self, FILEPATH_KEY, None):
             if os.path.exists(filepath):
                 if not os.path.exists(lock):
-                    warnings.warn("Writing to a non-locked file, watch out for collisions.", UserWarning)
+                    warnings.warn("Writing to a non-locked, existing file. Beware of collisions.", UserWarning)
                 else:
                     raise OSError("The file '{}' is locked by a different process".format(filepath))
+            if getattr(self, FILEPATH_KEY, None):
+                self.unlock()
             setattr(self, FILEPATH_KEY, filepath)
-            self.unlock()
             _make_rw(filepath)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
@@ -162,6 +163,22 @@ class YacAttMap(attmap.PathExAttMap):
             os.remove(lock)
             return True
         return False
+
+    def make_writable(self, filepath=None):
+        """
+        Grant write capabilities to the object
+
+        :param str filepath: path to the file that the contents will be written to
+        :return YacAttMap: updated object
+        """
+        if not getattr(self, RO_KEY, True):
+            print("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
+            return self
+        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        _make_rw(filepath)
+        setattr(self, RO_KEY, False)
+        setattr(self, FILEPATH_KEY, filepath)
+        return self
 
 
 def _check_filepath(filepath):
