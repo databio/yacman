@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `writable` argument to create the object in a read-only or writable mode
 - `wait_max` argument to specify the wait time for the lock before raising a `RuntimeError`
 - `unlock` method
+- `make_writable` method
 
 ### Changed
 - entries argument accepting a file path becomes deprecated and throws a `DeprecationWarning` and will be removed altogether in the future relase
