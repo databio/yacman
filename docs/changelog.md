@@ -3,7 +3,7 @@
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
 
-## [0.6.0] -- unreleased
+## [0.6.0] -- 2019-10-02
 
 ### Added
 - add support for multi-user context operation
@@ -13,7 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `make_writable` method
 
 ### Changed
-- entries argument accepting a file path becomes deprecated and throws a `DeprecationWarning` and will be removed altogether in the future relase
+- entries argument accepting a file path becomes deprecated and throws a `DeprecationWarning` and will be removed altogether in the future release
 
 ## [0.5.2] -- 2019-08-20
 

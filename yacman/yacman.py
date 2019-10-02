@@ -72,6 +72,7 @@ class YacAttMap(attmap.PathExAttMap):
         :param bool writable: whether to create the object with write capabilities
         :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
         """
+        # TODO: remove this block with the next major release
         if isinstance(entries, str) and os.path.exists(entries):
             warnings.warn("The entries argument should be a dict. If you want to read a file, "
                           "use the filepath argument.", category=DeprecationWarning)
@@ -225,7 +226,7 @@ def _wait_for_lock(lock_file, wait_max):
         if totaltime >= wait_max:
             raise RuntimeError("The maximum wait time has been reached and the lock file still exists.")
     if first_message_flag:
-        print("File unlocked")
+        print(" File unlocked")
 
 
 def _create_file_racefree(file):
