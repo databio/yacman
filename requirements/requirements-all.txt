@@ -1,3 +1,4 @@
 attmap>=0.12.9
 pyyaml>=3.13
 oyaml
+ubiquerg>=0.4.9

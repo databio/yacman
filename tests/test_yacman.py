@@ -2,64 +2,128 @@ import pytest
 import yacman
 import os
 
-# for interactive testing, run from within code/yacman
 
-def test_yaml_load():
-    conf = yacman.load_yaml("conf.yaml")
-    yacmap = yacman.YacAttMap("conf.yaml")
-    yacmap2 = yacman.YacAttMap(conf)
+class TestWriting:
+    def test_basic_write(self, cfg_file, list_locks, data_path, locked_cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert os.path.exists(locked_cfg_file)
+        yacmap.write()
 
-    # Not sure why these are not equivalent:
-    # assert(yacmap == yacmap2)
+    def test_write_creates_file(self, data_path, list_locks):
+        with pytest.warns(UserWarning):
+            yacmap = yacman.YacAttMap(entries={}, writable=True)
+        yacmap.write(filepath=make_cfg_file_path("writeout.yaml", data_path))
+        assert os.path.exists(make_lock_path("writeout.yaml", data_path))
+        assert os.path.exists(make_cfg_file_path("writeout.yaml", data_path))
+        os.remove(make_cfg_file_path("writeout.yaml", data_path))
 
-    # but they are at the yaml level:
-    assert(yacmap.to_yaml() == yacmap2.to_yaml())
+    @pytest.mark.parametrize(["name", "entry"], [("updated.yaml", "update"), ("updated1.yaml", "update1")])
+    def test_entries_update(self, name, data_path, entry):
+        filepath = make_cfg_file_path(name, data_path)
+        yacmap = yacman.YacAttMap(entries={})
+        yacmap.test = entry
+        yacmap.write(filepath=filepath)
+        yacmapin = yacman.YacAttMap(filepath=filepath, writable=False)
+        assert(yacmapin.test == entry)
+        os.remove(filepath)
 
-    yacmap
-
-    # round trip
-    test_yaml_filename = "pytest_test.yaml"
-    yacmap.write(test_yaml_filename)
-    obj = yacman.YacAttMap(test_yaml_filename)
-    assert(yacmap.to_yaml() == obj.to_yaml())
-    os.remove(test_yaml_filename)
-
-    print(yacmap.to_yaml())
-    assert(yacmap.genome_folder == os.path.expandvars("$GENOMES"))
-    assert(yacmap2.genome_folder == os.path.expandvars("$GENOMES"))
-    assert(yacmap.to_dict()["genome_folder"] == "$GENOMES")
-    print(yacmap.genomes.to_yaml())
-
-
-    yacmap._file_path
-
-
-def test_entries_update():
-    conf = yacman.load_yaml("conf.yaml")
-    yacmap = yacman.YacAttMap("conf.yaml")
-    yacmap = yacman.YacAttMap(filepath="conf.yaml")
-    yacmap = yacman.YacAttMap({"entry": "updated"}, filepath="conf.yaml")
-    yacmap = yacman.YacAttMap({"genome_folder": "updated"}, filepath="conf.yaml")
-    assert(yacmap.genome_folder == "updated")
-    yacmap = yacman.YacAttMap()
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_warn_on_write_when_not_locked(self, name, data_path, cfg_file, locked_cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        filename = make_cfg_file_path(name, data_path)
+        f = os.open(filename, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(f)
+        with pytest.warns(UserWarning):
+            yacmap.write(filename)
+        os.remove(filename)
+        assert os.path.exists(make_lock_path(name, data_path))
+        assert not os.path.exists(locked_cfg_file)
 
 
+class TestExceptions:
+    def test_cant_write_ro_mode(self, cfg_file, list_locks):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        with pytest.raises(OSError):
+            yacmap.write(cfg_file)
 
-def test_write():
-    yacmap = yacman.YacAttMap("conf.yaml")
-    yacmap.write("writeout.yaml")
+    def test_filename_required_when_object_created_from_mapping(self):
+        yacmap = yacman.YacAttMap(entries={})
+        with pytest.raises(TypeError):
+            yacmap.write()
 
-    yacmapin = yacman.YacAttMap("writeout.yaml")
-    yacmapin.newattr = "value"
-    yacmapin.write()
-    yacmapin2 = yacman.YacAttMap("writeout.yaml")
-    assert (yacmapin2.newattr == "value")
-    os.remove("writeout.yaml")
+    def test_unlock_errors_when_no_filepath_provided(self, cfg_file):
+        yacmap = yacman.YacAttMap({})
+        with pytest.raises(TypeError):
+            yacmap.unlock()
 
-    conf = yacman.load_yaml("conf.yaml")
-    yacmap_nofile = yacman.YacAttMap(conf)
-    with pytest.raises(Exception):
-        yacmap_nofile.write()
+    def test_warnings(self, cfg_file):
+        with pytest.warns(None):
+            yacman.YacAttMap({}, writable=True)
+        with pytest.warns(DeprecationWarning):
+            yacman.YacAttMap(entries=cfg_file)
+
+
+class TestManipulationMethods:
+    def test_unlock_removes_lock_and_returns_true(self, cfg_file, list_locks):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert yacmap.unlock()
+        assert len(list_locks) == 0
+
+    def test_unlock_returns_false_if_nothing_unlocked(self, cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        assert not yacmap.unlock()
+
+    def test_make_writable_doesnt_change_already_writable_objects(self, cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert yacmap == yacmap.make_writable()
+
+    def test_make_writable_makes_object_writable(self, cfg_file):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable()
+        assert not getattr(yacmap, yacman.RO_KEY, True)
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_changes_filepath(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert getattr(yacmap, yacman.FILEPATH_KEY) != cfg_file
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_creates_locks(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert os.path.exists(make_lock_path(name, data_path))
+
+
+class TestReading:
+    def test_read_locked_file_in_ro_mode(self, data_path, cfg_file):
+        yacmapin = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacmapin.newattr = "value"
+        yacmapin.write()
+        yacmapin2 = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        assert (yacmapin2.newattr == "value")
+
+    def test_read_locked_file_in_rw_mode(self, data_path, cfg_file):
+        """ Here we test that the object constructor waits for a second and raises a Runtime error """
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        with pytest.raises(RuntimeError):
+            yacman.YacAttMap(filepath=cfg_file, writable=True, wait_max=1)
+        yacmap.write()
+
+    def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):
+        """
+        this tests backwards compatibility, in the past the locking system did not exist.
+        Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to
+        the file when no arguments but the intput are specified
+        """
+        yacman.YacAttMap(filepath=cfg_file)
+        assert not os.path.exists(locked_cfg_file)
+
+    def test_on_init_file_update(self, cfg_file):
+        a, v = "testattr", "testval"
+        y = yacman.YacAttMap(entries={a: v}, filepath=cfg_file)
+        assert y[a] == v
+
 
 
 yaml_str = """\
@@ -68,8 +132,8 @@ one: 1
 2: two
 """
 
-def test_float_idx():
 
+def test_float_idx():
     data = yacman.YacAttMap(yamldata=yaml_str)
     # We should be able to access this by string, not by int index.
     assert(data['2'] == "two")
@@ -77,86 +141,14 @@ def test_float_idx():
         data[2]
 
 
-# import yacman
-# conf = yacman.load_yaml("conf.yaml")
-# conf
-# attmap.OrdAttMap(conf)
+def cleanup_locks(lcks):
+    if lcks:
+        [os.remove(l) for l in lcks]
 
 
-# y = load_yaml("/home/nsheff/Dropbox/env/bulker_config/puma.yaml")
-
-# f = "/home/nsheff/Dropbox/env/bulker_config/puma.yaml"
-# import yacman
-# y2 = yacman.YacAttMap(f)
-# y2["bulker"]["crates"]["databio"]["lab"]["1.0"]
+def make_cfg_file_path(name, data_path):
+    return os.path.join(data_path, name)
 
 
-
-
-# yaml_str = """\
-# ---
-# one: 1
-# 2: two
-# """
-# import yaml
-# import inspect
-# inspect.getsourcelines(yaml.SafeLoader.construct_mapping)
-# yaml.safe_load(yaml_str)
-
-
-# def my_construct_mapping(self, node, deep=False):
-#     data = self.construct_mapping_org(node, deep)
-#     return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
-
-# def construct_pairs(self, node, deep=False):
-#     # if not isinstance(node, MappingNode):
-#     #     raise ConstructorError(None, None,
-#     #             "expected a mapping node, but found %s" % node.id,
-#     #             node.start_mark)
-#     pairs = []
-#     for key_node, value_node in node.value:
-#         key = str(self.construct_object(key_node, deep=deep))
-#         value = self.construct_object(value_node, deep=deep)
-#         pairs.append((key, value))
-#     return pairs
-
-# yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
-# yaml.SafeLoader.construct_mapping = my_construct_mapping
-# yaml.SafeLoader.construct_pairs = construct_pairs
-
-
-
-# yaml.safe_load(yaml_str)
-
-
-# import oyaml
-# inspect.getsourcelines(oyaml.SafeLoader.construct_mapping)
-
-
-# def map_constructor2(loader, node):
-#     loader.flatten_mapping(node)
-#     pairs = loader.construct_pairs(node)
-
-#     try:
-#         return OrderedDict(pairs)
-#     except TypeError:
-#         loader.construct_mapping(node)  # trigger any contextual error
-#         raise
-
-# pyyaml.add_constructor("tag:yaml.org,2002:map", map_constructor, Loader=yaml.SafeLoader)
-
-# oyaml.safe_load(yaml_str)
-# yaml.safe_load(yaml_str)
-
-
-
-
-# yaml.safe_load(yaml_str)
-
-
-# import ruamel.yaml
-# from ruamel.yaml import YAML
-# yaml = YAML()
-
-# yaml.load(yaml_str)
-
+def make_lock_path(name, data_path):
+    return os.path.join(data_path, yacman.LOCK_PREFIX + name)
