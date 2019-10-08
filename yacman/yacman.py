@@ -357,13 +357,12 @@ def select_config(config_filepath=None,
             _LOGGER.debug("Found config file in {}: {}".
                           format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
-        else:
-            _LOGGER.info("Using default config. No config found in env "
-                         "var: {}".format(str(config_env_vars)))
-            selected_filepath = default_config_filepath
         if selected_filepath is None and cfg_file and strict_env:
             raise FileNotFoundError("Environment variable ({}) does not point to any existing file: {}".
                                     format(", ".join(config_env_vars), cfg_file))
     else:
-        _LOGGER.error("No configuration file found.")
+        # Third priority: default filepath
+        _LOGGER.info("Using default config. No config found in env "
+                     "var: {}".format(str(config_env_vars)))
+        selected_filepath = default_config_filepath
     return selected_filepath
