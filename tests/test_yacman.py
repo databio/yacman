@@ -141,6 +141,31 @@ def test_float_idx():
         data[2]
 
 
+class TestSelectConfig:
+    def test_select_config_works_with_filepath(self, cfg_file):
+        assert isinstance(yacman.select_config(config_filepath=cfg_file), str)
+
+    def test_select_config_works_env_vars(self, cfg_file, varname="TEST"):
+        os.environ[varname] = cfg_file
+        assert isinstance(yacman.select_config(config_env_vars=varname), str)
+        assert yacman.select_config(config_env_vars=varname) == yacman.select_config(config_filepath=cfg_file)
+        del os.environ[varname]
+
+    def test_select_config_returns_default_cfg(self, path="path.yaml"):
+        assert yacman.select_config(default_config_filepath=path) == path
+
+    def test_select_config_returns_none_if_no_cfg_found(self, varname="TEST"):
+        os.environ[varname] = "bogus/path.yaml"
+        assert yacman.select_config(config_env_vars=varname) is None
+        del os.environ[varname]
+
+    def test_select_config_errors_if_no_cfg_found_and_strict_checks_requested(self, varname="TEST"):
+        os.environ[varname] = "bogus/path.yaml"
+        with pytest.raises(Exception):
+            yacman.select_config(config_env_vars=varname, strict_env=True)
+        del os.environ[varname]
+
+
 def cleanup_locks(lcks):
     if lcks:
         [os.remove(l) for l in lcks]
