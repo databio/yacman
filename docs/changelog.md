@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.6.1] -- 2019-10-08
+
+### Added
+- `strict_env` argument to the `select_config` function
+
+### Changed
+- in `select_config` use the `default_config_filepath` even if no `config_env_vars` were specified 
 
 ## [0.6.0] -- 2019-10-02
 

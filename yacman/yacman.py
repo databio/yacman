@@ -311,7 +311,8 @@ def select_config(config_filepath=None,
                   config_env_vars=None,
                   default_config_filepath=None,
                   check_exist=True,
-                  on_missing=lambda fp: IOError(fp)):
+                  on_missing=lambda fp: IOError(fp),
+                  strict_env=False):
     """
     Selects the config file to load.
 
@@ -327,6 +328,9 @@ def select_config(config_filepath=None,
     :param bool check_exist: whether to check for path existence as file
     :param function(str) -> object on_missing: what to do with a filepath if it
         doesn't exist
+    :param bool strict_env: whether to raise an exception if no file path provided
+        and environment variables do not point to any files
+    raise: FileNotFoundError: when strict environment variables validation is not passed
     """
 
     # First priority: given file
@@ -353,11 +357,12 @@ def select_config(config_filepath=None,
             _LOGGER.debug("Found config file in {}: {}".
                           format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
-        else:
-            _LOGGER.info("Using default config. No config found in env "
-                         "var: {}".format(str(config_env_vars)))
-            selected_filepath = default_config_filepath
+        if selected_filepath is None and cfg_file and strict_env:
+            raise FileNotFoundError("Environment variable ({}) does not point to any existing file: {}".
+                                    format(", ".join(config_env_vars), cfg_file))
     else:
-        _LOGGER.error("No configuration file found.")
-
+        # Third priority: default filepath
+        _LOGGER.info("Using default config. No config found in env "
+                     "var: {}".format(str(config_env_vars)))
+        selected_filepath = default_config_filepath
     return selected_filepath
