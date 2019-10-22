@@ -266,6 +266,11 @@ def _make_rw(filepath, wait_max=10):
     else:
         try:
             _create_file_racefree(lock_path)
+        except FileNotFoundError:
+            parent_dir = os.path.dirname(filepath)
+            print("Directory does not exist, creating: {}".format(parent_dir))
+            os.makedirs(parent_dir)
+            _create_file_racefree(lock_path)
         except OSError as e:
             if e.errno == errno.EEXIST:
                 # Rare case: file already exists;
@@ -273,6 +278,8 @@ def _make_rw(filepath, wait_max=10):
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 print("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
+            else:
+                raise e
 
 
 def load_yaml(filepath):
