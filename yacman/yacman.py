@@ -182,6 +182,25 @@ class YacAttMap(attmap.PathExAttMap):
         setattr(self, FILEPATH_KEY, filepath)
         return self
 
+    @property
+    def file_path(self):
+        """
+        Return the path to the config file or None if not set
+
+        :return str | None: path to the file the object will would to
+        """
+        return getattr(self, FILEPATH_KEY, None)
+
+    @property
+    def writable(self):
+        """
+        Return writability flag or None if not set
+
+        :return bool | None: whether the object is writable now
+        """
+        attr = getattr(self, RO_KEY, None)
+        return attr if attr is None else not attr
+
 
 def _check_filepath(filepath):
     """
@@ -266,6 +285,11 @@ def _make_rw(filepath, wait_max=10):
     else:
         try:
             _create_file_racefree(lock_path)
+        except FileNotFoundError:
+            parent_dir = os.path.dirname(filepath)
+            print("Directory does not exist, creating: {}".format(parent_dir))
+            os.makedirs(parent_dir)
+            _create_file_racefree(lock_path)
         except OSError as e:
             if e.errno == errno.EEXIST:
                 # Rare case: file already exists;
@@ -273,6 +297,8 @@ def _make_rw(filepath, wait_max=10):
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 print("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
+            else:
+                raise e
 
 
 def load_yaml(filepath):

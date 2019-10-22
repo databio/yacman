@@ -2,6 +2,14 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.6.3] -- 2019-10-22
+
+### Fixed
+- silent lock creation failures in case the lock directory does not exist; [#24](https://github.com/databio/yacman/issues/24)
+
+### Added
+- `YacAttMap` properties: `file_path` and `writable`
+
 ## [0.6.2] -- 2019-10-10
 
 ### Changed
