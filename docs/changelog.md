@@ -1,6 +1,11 @@
 # Changelog
 
-This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+
+## [0.6.4] -- 2019-11-04
+
+### Added
+- distribute license file with the package
 
 ## [0.6.3] -- 2019-10-22
 
