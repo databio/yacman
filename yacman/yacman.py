@@ -103,7 +103,7 @@ class YacAttMap(attmap.PathExAttMap):
 
     def __del__(self):
         if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
-            self.unlock()
+            self.make_readonly()
 
     def __repr__(self):
         # Here we want to render the data in a nice way; and we want to indicate
@@ -111,6 +111,12 @@ class YacAttMap(attmap.PathExAttMap):
         # to give you the data without the class name.
         return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
                             exclude_class_list="YacAttMap")
+
+    def _reinit(self, filepath=None):
+        if filepath is not None:
+            self.__init__(filepath=filepath)
+        else:
+            self.__init__(entries={})
 
     def _excl_from_repr(self, k, cls):
         return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
@@ -122,9 +128,9 @@ class YacAttMap(attmap.PathExAttMap):
 
     def write(self, filepath=None):
         """
-        Writes the contents to a file.
+        Write the contents to a file.
 
-        Makes sure that the object has been created with write capabilities
+        Make sure that the object has been created with write capabilities
 
         :param str filepath: a file path to write to
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
@@ -145,7 +151,7 @@ class YacAttMap(attmap.PathExAttMap):
                 else:
                     raise OSError("The file '{}' is locked by a different process".format(filepath))
             if getattr(self, FILEPATH_KEY, None):
-                self.unlock()
+                self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
             _make_rw(filepath)
         setattr(self, RO_KEY, False)
@@ -153,16 +159,16 @@ class YacAttMap(attmap.PathExAttMap):
             f.write(self.to_yaml())
         return os.path.abspath(filepath)
 
-    def unlock(self, filepath=None):
+    def make_readonly(self):
         """
-        Remove lock
+        Remove lock and make the object read only.
 
         :return bool: a logical indicating whether any locks were removed
         """
-        filename = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        lock = _make_lock_path(filename)
+        lock = _make_lock_path(_check_filepath(getattr(self, FILEPATH_KEY, None)))
         if os.path.exists(lock):
             os.remove(lock)
+            setattr(self, RO_KEY, True)
             return True
         return False
 
@@ -178,6 +184,10 @@ class YacAttMap(attmap.PathExAttMap):
             return self
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         _make_rw(filepath)
+        try:
+            self._reinit(filepath)
+        except FileNotFoundError:
+            self._reinit()
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
         return self

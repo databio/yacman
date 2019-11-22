@@ -54,7 +54,7 @@ class TestExceptions:
     def test_unlock_errors_when_no_filepath_provided(self, cfg_file):
         yacmap = yacman.YacAttMap({})
         with pytest.raises(TypeError):
-            yacmap.unlock()
+            yacmap.make_readonly()
 
     def test_warnings(self, cfg_file):
         with pytest.warns(None):
@@ -66,12 +66,12 @@ class TestExceptions:
 class TestManipulationMethods:
     def test_unlock_removes_lock_and_returns_true(self, cfg_file, list_locks):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
-        assert yacmap.unlock()
+        assert yacmap.make_readonly()
         assert len(list_locks) == 0
 
     def test_unlock_returns_false_if_nothing_unlocked(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
-        assert not yacmap.unlock()
+        assert not yacmap.make_readonly()
 
     def test_make_writable_doesnt_change_already_writable_objects(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
