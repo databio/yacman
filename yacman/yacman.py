@@ -186,8 +186,9 @@ class YacAttMap(attmap.PathExAttMap):
         _make_rw(filepath)
         try:
             self._reinit(filepath)
-        except FileNotFoundError:
+        except Exception as e:
             self._reinit()
+            print("File '{}' was not read, got exception: {}".format(filepath, e))
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
         return self
