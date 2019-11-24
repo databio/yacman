@@ -113,7 +113,7 @@ class TestReading:
     def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):
         """
         this tests backwards compatibility, in the past the locking system did not exist.
-        Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to
+        Consequently, to make yacman backwards compatible, multiple processes should be able to read and write to
         the file when no arguments but the intput are specified
         """
         yacman.YacAttMap(filepath=cfg_file)

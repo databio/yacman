@@ -113,6 +113,11 @@ class YacAttMap(attmap.PathExAttMap):
                             exclude_class_list="YacAttMap")
 
     def _reinit(self, filepath=None):
+        """
+        Re-initialize the object
+
+        :param str filepath: path to the file that should be read
+        """
         if filepath is not None:
             self.__init__(filepath=filepath)
         else:
@@ -174,7 +179,10 @@ class YacAttMap(attmap.PathExAttMap):
 
     def make_writable(self, filepath=None):
         """
-        Grant write capabilities to the object
+        Grant write capabilities to the object and re-read the file.
+
+        Any changes made to the attributes are overwritten so that the object
+        reflects the contents of the specified config file
 
         :param str filepath: path to the file that the contents will be written to
         :return YacAttMap: updated object
