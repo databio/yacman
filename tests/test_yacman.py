@@ -94,6 +94,25 @@ class TestManipulationMethods:
         yacmap.make_writable(make_cfg_file_path(name, data_path))
         assert os.path.exists(make_lock_path(name, data_path))
 
+    def test_make_writable_rereads_source_file(self, cfg_file):
+        """
+        Test that the the changes made to the cfg by other processes
+        are re-read after the original process is made writable
+        """
+        yacmap1 = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacmap.test = "test"
+        yacmap.write()
+        yacmap.make_readonly()
+        yacmap1.make_writable(cfg_file)
+        assert yacmap1.test == "test"
+        # remove added entry after the test
+        if "test" in yacmap1:
+            del yacmap1["test"]
+            yacmap1.write()
+        yacmap1.make_readonly()
+
+
 
 class TestReading:
     def test_read_locked_file_in_ro_mode(self, data_path, cfg_file):
@@ -108,7 +127,7 @@ class TestReading:
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         with pytest.raises(RuntimeError):
             yacman.YacAttMap(filepath=cfg_file, writable=True, wait_max=1)
-        yacmap.write()
+        yacmap.make_readonly()
 
     def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):
         """
