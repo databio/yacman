@@ -15,8 +15,9 @@ FILEPATH_KEY = "_file_path"
 RO_KEY = "_ro"
 USE_LOCKS_KEY = "_locks"
 ORI_STATE_KEY = "_ori_state"
+WAIT_MAX_KEY = "_wait_time"
 
-ATTR_KEYS = (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY, ORI_STATE_KEY)
+ATTR_KEYS = (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY, ORI_STATE_KEY, WAIT_MAX_KEY)
 
 LOCK_PREFIX = "lock."
 DEFAULT_RO = False
@@ -100,6 +101,7 @@ class YacAttMap(attmap.PathExAttMap):
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
             # prevents: AttributeError: _OrderedDict__root
+            setattr(self, WAIT_MAX_KEY, wait_max)
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, not writable)
 
@@ -173,7 +175,7 @@ class YacAttMap(attmap.PathExAttMap):
             if getattr(self, FILEPATH_KEY, None):
                 self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
-            _make_rw(filepath)
+            _make_rw(filepath, getattr(self, WAIT_MAX_KEY))
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
@@ -221,7 +223,7 @@ class YacAttMap(attmap.PathExAttMap):
             # file path has changed, unlock the previously used file
             self._remove_lock(getattr(self, FILEPATH_KEY, None))
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        _make_rw(filepath)
+        _make_rw(filepath, getattr(self, WAIT_MAX_KEY))
         try:
             self._reinit(filepath)
         except Exception as e:
