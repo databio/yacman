@@ -1,4 +1,3 @@
-import attmap
 import os
 from collections import Iterable
 import oyaml as yaml
@@ -7,20 +6,13 @@ import errno
 import time
 import sys
 import warnings
+
+import attmap
 from ubiquerg import mkabs
 
+from .const import *
+
 _LOGGER = logging.getLogger(__name__)
-
-FILEPATH_KEY = "_file_path"
-RO_KEY = "_ro"
-USE_LOCKS_KEY = "_locks"
-ORI_STATE_KEY = "_ori_state"
-WAIT_MAX_KEY = "_wait_time"
-
-ATTR_KEYS = (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY, ORI_STATE_KEY, WAIT_MAX_KEY)
-
-LOCK_PREFIX = "lock."
-DEFAULT_RO = False
 
 
 # Hack for string indexes of both ordered and unordered yaml representations
@@ -65,7 +57,7 @@ class YacAttMap(attmap.PathExAttMap):
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=10):
+    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME):
         """
         Object constructor
 
@@ -175,7 +167,7 @@ class YacAttMap(attmap.PathExAttMap):
             if getattr(self, FILEPATH_KEY, None):
                 self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
-            _make_rw(filepath, getattr(self, WAIT_MAX_KEY))
+            _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
@@ -223,7 +215,7 @@ class YacAttMap(attmap.PathExAttMap):
             # file path has changed, unlock the previously used file
             self._remove_lock(getattr(self, FILEPATH_KEY, None))
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        _make_rw(filepath, getattr(self, WAIT_MAX_KEY))
+        _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
         except Exception as e:
