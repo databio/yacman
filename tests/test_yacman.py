@@ -112,6 +112,12 @@ class TestManipulationMethods:
             yacmap1.write()
         yacmap1.make_readonly()
 
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_removes_previous_locks(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert not os.path.exists(make_lock_path(cfg_file, data_path))
+        yacmap.make_readonly()
 
 
 class TestReading:
