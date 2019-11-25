@@ -150,6 +150,26 @@ class TestReading:
         assert y[a] == v
 
 
+class TestContextManager:
+    @pytest.mark.parametrize("state", [True, False])
+    def test_context_manager_does_not_change_state(self, cfg_file, state):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
+        with yacmap as y:
+            pass
+        assert yacmap.writable == state
+
+    @pytest.mark.parametrize("state", [True, False])
+    def test_context_manager_saves_updates(self, cfg_file, state):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
+        with yacmap as y:
+            y.testattr = "testval"
+        if yacmap.writable:
+            yacmap.make_readonly()
+        yacmap1 = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert yacmap1.testattr == "testval"
+        del yacmap1["testattr"]
+        yacmap1.make_readonly()
+
 
 yaml_str = """\
 ---

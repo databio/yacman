@@ -9,14 +9,16 @@ import sys
 import warnings
 from ubiquerg import mkabs
 
-
 _LOGGER = logging.getLogger(__name__)
-
 
 FILEPATH_KEY = "_file_path"
 RO_KEY = "_ro"
-LOCK_PREFIX = "lock."
 USE_LOCKS_KEY = "_locks"
+ORI_STATE_KEY = "_ori_state"
+
+ATTR_KEYS = (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY, ORI_STATE_KEY)
+
+LOCK_PREFIX = "lock."
 DEFAULT_RO = False
 
 
@@ -112,6 +114,19 @@ class YacAttMap(attmap.PathExAttMap):
         return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
                             exclude_class_list="YacAttMap")
 
+    def __enter__(self):
+        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY))
+        if self.writable:
+            return self
+        else:
+            self.make_writable()
+            return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.write()
+        if getattr(self, ORI_STATE_KEY, False):
+            self.make_readonly()
+
     def _reinit(self, filepath=None):
         """
         Re-initialize the object
@@ -124,7 +139,7 @@ class YacAttMap(attmap.PathExAttMap):
             self.__init__(entries={})
 
     def _excl_from_repr(self, k, cls):
-        return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
+        return k in ATTR_KEYS
 
     @property
     def _lower_type_bound(self):

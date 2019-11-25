@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.6.5] -- 2019-11-2X
 
+### Added
+- context manager functionality to `YacAttMap` class
+
 ### Changed
 - method name: `unlock` to `make_readonly`
 - `make_writable` behavior: it re-reads the source file now
