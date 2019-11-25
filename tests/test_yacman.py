@@ -64,12 +64,12 @@ class TestExceptions:
 
 
 class TestManipulationMethods:
-    def test_unlock_removes_lock_and_returns_true(self, cfg_file, list_locks):
+    def test_make_readonly_removes_lock_and_returns_true(self, cfg_file, list_locks):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         assert yacmap.make_readonly()
         assert len(list_locks) == 0
 
-    def test_unlock_returns_false_if_nothing_unlocked(self, cfg_file):
+    def test_make_readonly_returns_false_if_nothing_unlocked(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         assert not yacmap.make_readonly()
 
