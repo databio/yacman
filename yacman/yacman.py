@@ -164,15 +164,27 @@ class YacAttMap(attmap.PathExAttMap):
             f.write(self.to_yaml())
         return os.path.abspath(filepath)
 
+    @staticmethod
+    def _remove_lock(filepath):
+        """
+        Remove lock
+
+        :param str filepath: path to the file to remove the lock for. Not the path to the lock!
+        :return bool: whether the lock was found and removed
+        """
+        lock = _make_lock_path(_check_filepath(filepath))
+        if os.path.exists(lock):
+            os.remove(lock)
+            return True
+        return False
+
     def make_readonly(self):
         """
         Remove lock and make the object read only.
 
         :return bool: a logical indicating whether any locks were removed
         """
-        lock = _make_lock_path(_check_filepath(getattr(self, FILEPATH_KEY, None)))
-        if os.path.exists(lock):
-            os.remove(lock)
+        if self._remove_lock(getattr(self, FILEPATH_KEY, None)):
             setattr(self, RO_KEY, True)
             return True
         return False
@@ -190,6 +202,9 @@ class YacAttMap(attmap.PathExAttMap):
         if not getattr(self, RO_KEY, True):
             print("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
+        if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
+            # file path has changed, unlock the previously used file
+            self._remove_lock(getattr(self, FILEPATH_KEY, None))
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         _make_rw(filepath)
         try:
