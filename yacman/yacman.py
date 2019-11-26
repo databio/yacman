@@ -211,7 +211,7 @@ class YacAttMap(attmap.PathExAttMap):
         :return YacAttMap: updated object
         """
         if not getattr(self, RO_KEY, True):
-            print("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
+            _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
         if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
             # file path has changed, unlock the previously used file
@@ -222,7 +222,7 @@ class YacAttMap(attmap.PathExAttMap):
             self._reinit(filepath)
         except Exception as e:
             self._reinit()
-            print("File '{}' was not read, got exception: {}".format(filepath, e))
+            _LOGGER.info("File '{}' was not read, got an exception: {}".format(filepath, e))
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
         _LOGGER.debug("Made object writable")
@@ -333,7 +333,7 @@ def _make_rw(filepath, wait_max=10):
             _create_file_racefree(lock_path)
         except FileNotFoundError:
             parent_dir = os.path.dirname(filepath)
-            print("Directory does not exist, creating: {}".format(parent_dir))
+            _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
             os.makedirs(parent_dir)
             _create_file_racefree(lock_path)
         except OSError as e:
@@ -341,7 +341,7 @@ def _make_rw(filepath, wait_max=10):
                 # Rare case: file already exists;
                 # the lock has been created in the split second since the last lock existence check,
                 # wait for the lock file to be gone, but no longer than `wait_max`.
-                print("Could not create a lock file, it already exists: {}".format(lock_path))
+                _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
             else:
                 raise e
