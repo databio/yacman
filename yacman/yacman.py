@@ -171,6 +171,7 @@ class YacAttMap(attmap.PathExAttMap):
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
+        _LOGGER.debug("Wrote to a file: {}".format(os.path.abspath(filepath)))
         return os.path.abspath(filepath)
 
     @staticmethod
@@ -195,6 +196,7 @@ class YacAttMap(attmap.PathExAttMap):
         """
         if self._remove_lock(getattr(self, FILEPATH_KEY, None)):
             setattr(self, RO_KEY, True)
+            _LOGGER.debug("Made object read-only")
             return True
         return False
 
@@ -223,6 +225,7 @@ class YacAttMap(attmap.PathExAttMap):
             print("File '{}' was not read, got exception: {}".format(filepath, e))
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
+        _LOGGER.debug("Made object writable")
         return self
 
     @property
