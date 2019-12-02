@@ -54,7 +54,7 @@ class TestExceptions:
     def test_unlock_errors_when_no_filepath_provided(self, cfg_file):
         yacmap = yacman.YacAttMap({})
         with pytest.raises(TypeError):
-            yacmap.unlock()
+            yacmap.make_readonly()
 
     def test_warnings(self, cfg_file):
         with pytest.warns(None):
@@ -64,14 +64,14 @@ class TestExceptions:
 
 
 class TestManipulationMethods:
-    def test_unlock_removes_lock_and_returns_true(self, cfg_file, list_locks):
+    def test_make_readonly_removes_lock_and_returns_true(self, cfg_file, list_locks):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
-        assert yacmap.unlock()
+        assert yacmap.make_readonly()
         assert len(list_locks) == 0
 
-    def test_unlock_returns_false_if_nothing_unlocked(self, cfg_file):
+    def test_make_readonly_returns_false_if_nothing_unlocked(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
-        assert not yacmap.unlock()
+        assert not yacmap.make_readonly()
 
     def test_make_writable_doesnt_change_already_writable_objects(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
@@ -94,6 +94,31 @@ class TestManipulationMethods:
         yacmap.make_writable(make_cfg_file_path(name, data_path))
         assert os.path.exists(make_lock_path(name, data_path))
 
+    def test_make_writable_rereads_source_file(self, cfg_file):
+        """
+        Test that the the changes made to the cfg by other processes
+        are re-read after the original process is made writable
+        """
+        yacmap1 = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacmap.test = "test"
+        yacmap.write()
+        yacmap.make_readonly()
+        yacmap1.make_writable(cfg_file)
+        assert yacmap1.test == "test"
+        # remove added entry after the test
+        if "test" in yacmap1:
+            del yacmap1["test"]
+            yacmap1.write()
+        yacmap1.make_readonly()
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_removes_previous_locks(self, cfg_file, name, data_path):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert not os.path.exists(make_lock_path(cfg_file, data_path))
+        yacmap.make_readonly()
+
 
 class TestReading:
     def test_read_locked_file_in_ro_mode(self, data_path, cfg_file):
@@ -108,12 +133,12 @@ class TestReading:
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         with pytest.raises(RuntimeError):
             yacman.YacAttMap(filepath=cfg_file, writable=True, wait_max=1)
-        yacmap.write()
+        yacmap.make_readonly()
 
     def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):
         """
         this tests backwards compatibility, in the past the locking system did not exist.
-        Consequently, to make yacman backwards compatible, multiple processes should be able to read and wrote to
+        Consequently, to make yacman backwards compatible, multiple processes should be able to read and write to
         the file when no arguments but the intput are specified
         """
         yacman.YacAttMap(filepath=cfg_file)
@@ -124,6 +149,26 @@ class TestReading:
         y = yacman.YacAttMap(entries={a: v}, filepath=cfg_file)
         assert y[a] == v
 
+
+class TestContextManager:
+    @pytest.mark.parametrize("state", [True, False])
+    def test_context_manager_does_not_change_state(self, cfg_file, state):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
+        with yacmap as y:
+            pass
+        assert yacmap.writable == state
+
+    @pytest.mark.parametrize("state", [True, False])
+    def test_context_manager_saves_updates(self, cfg_file, state):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
+        with yacmap as y:
+            y.testattr = "testval"
+        if yacmap.writable:
+            yacmap.make_readonly()
+        yacmap1 = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        assert yacmap1.testattr == "testval"
+        del yacmap1["testattr"]
+        yacmap1.make_readonly()
 
 
 yaml_str = """\

@@ -1,4 +1,3 @@
-import attmap
 import os
 from collections import Iterable
 import oyaml as yaml
@@ -7,17 +6,13 @@ import errno
 import time
 import sys
 import warnings
+
+import attmap
 from ubiquerg import mkabs
 
+from .const import *
 
 _LOGGER = logging.getLogger(__name__)
-
-
-FILEPATH_KEY = "_file_path"
-RO_KEY = "_ro"
-LOCK_PREFIX = "lock."
-USE_LOCKS_KEY = "_locks"
-DEFAULT_RO = False
 
 
 # Hack for string indexes of both ordered and unordered yaml representations
@@ -62,7 +57,7 @@ class YacAttMap(attmap.PathExAttMap):
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=10):
+    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME):
         """
         Object constructor
 
@@ -98,12 +93,13 @@ class YacAttMap(attmap.PathExAttMap):
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
             # prevents: AttributeError: _OrderedDict__root
+            setattr(self, WAIT_MAX_KEY, wait_max)
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, not writable)
 
     def __del__(self):
         if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
-            self.unlock()
+            self.make_readonly()
 
     def __repr__(self):
         # Here we want to render the data in a nice way; and we want to indicate
@@ -112,8 +108,32 @@ class YacAttMap(attmap.PathExAttMap):
         return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
                             exclude_class_list="YacAttMap")
 
+    def __enter__(self):
+        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY))
+        if self.writable:
+            return self
+        else:
+            self.make_writable()
+            return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.write()
+        if getattr(self, ORI_STATE_KEY, False):
+            self.make_readonly()
+
+    def _reinit(self, filepath=None):
+        """
+        Re-initialize the object
+
+        :param str filepath: path to the file that should be read
+        """
+        if filepath is not None:
+            self.__init__(filepath=filepath)
+        else:
+            self.__init__(entries={})
+
     def _excl_from_repr(self, k, cls):
-        return k in (USE_LOCKS_KEY, FILEPATH_KEY, RO_KEY)
+        return k in ATTR_KEYS
 
     @property
     def _lower_type_bound(self):
@@ -122,9 +142,9 @@ class YacAttMap(attmap.PathExAttMap):
 
     def write(self, filepath=None):
         """
-        Writes the contents to a file.
+        Write the contents to a file.
 
-        Makes sure that the object has been created with write capabilities
+        Make sure that the object has been created with write capabilities
 
         :param str filepath: a file path to write to
         :raise OSError: when the object has been created in a read only mode or other process has locked the file
@@ -145,41 +165,67 @@ class YacAttMap(attmap.PathExAttMap):
                 else:
                     raise OSError("The file '{}' is locked by a different process".format(filepath))
             if getattr(self, FILEPATH_KEY, None):
-                self.unlock()
+                self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
-            _make_rw(filepath)
+            _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
+        _LOGGER.debug("Wrote to a file: {}".format(os.path.abspath(filepath)))
         return os.path.abspath(filepath)
 
-    def unlock(self, filepath=None):
+    @staticmethod
+    def _remove_lock(filepath):
         """
         Remove lock
 
-        :return bool: a logical indicating whether any locks were removed
+        :param str filepath: path to the file to remove the lock for. Not the path to the lock!
+        :return bool: whether the lock was found and removed
         """
-        filename = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        lock = _make_lock_path(filename)
+        lock = _make_lock_path(_check_filepath(filepath))
         if os.path.exists(lock):
             os.remove(lock)
             return True
         return False
 
+    def make_readonly(self):
+        """
+        Remove lock and make the object read only.
+
+        :return bool: a logical indicating whether any locks were removed
+        """
+        if self._remove_lock(getattr(self, FILEPATH_KEY, None)):
+            setattr(self, RO_KEY, True)
+            _LOGGER.debug("Made object read-only")
+            return True
+        return False
+
     def make_writable(self, filepath=None):
         """
-        Grant write capabilities to the object
+        Grant write capabilities to the object and re-read the file.
+
+        Any changes made to the attributes are overwritten so that the object
+        reflects the contents of the specified config file
 
         :param str filepath: path to the file that the contents will be written to
         :return YacAttMap: updated object
         """
         if not getattr(self, RO_KEY, True):
-            print("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
+            _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
+        if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
+            # file path has changed, unlock the previously used file
+            self._remove_lock(getattr(self, FILEPATH_KEY, None))
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        _make_rw(filepath)
+        _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        try:
+            self._reinit(filepath)
+        except Exception as e:
+            self._reinit()
+            _LOGGER.info("File '{}' was not read, got an exception: {}".format(filepath, e))
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
+        _LOGGER.debug("Made object writable")
         return self
 
     @property
@@ -287,7 +333,7 @@ def _make_rw(filepath, wait_max=10):
             _create_file_racefree(lock_path)
         except FileNotFoundError:
             parent_dir = os.path.dirname(filepath)
-            print("Directory does not exist, creating: {}".format(parent_dir))
+            _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
             os.makedirs(parent_dir)
             _create_file_racefree(lock_path)
         except OSError as e:
@@ -295,7 +341,7 @@ def _make_rw(filepath, wait_max=10):
                 # Rare case: file already exists;
                 # the lock has been created in the split second since the last lock existence check,
                 # wait for the lock file to be gone, but no longer than `wait_max`.
-                print("Could not create a lock file, it already exists: {}".format(lock_path))
+                _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
                 _wait_for_lock(lock_path, wait_max)
             else:
                 raise e
