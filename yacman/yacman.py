@@ -222,7 +222,7 @@ class YacAttMap(attmap.PathExAttMap):
         _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
-        except FileNotFoundError:
+        except OSError:
             _LOGGER.debug("File '{}' not found".format(filepath))
             pass
         except Exception as e:
@@ -407,7 +407,7 @@ def select_config(config_filepath=None,
         doesn't exist
     :param bool strict_env: whether to raise an exception if no file path provided
         and environment variables do not point to any files
-    raise: FileNotFoundError: when strict environment variables validation is not passed
+    raise: OSError: when strict environment variables validation is not passed
     """
 
     # First priority: given file
@@ -433,7 +433,7 @@ def select_config(config_filepath=None,
             _LOGGER.debug("Found config file in {}: {}".format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         if selected_filepath is None and cfg_file and strict_env:
-            raise FileNotFoundError("Environment variable ({}) does not point to any existing file: {}".
+            raise OSError("Environment variable ({}) does not point to any existing file: {}".
                                     format(", ".join(config_env_vars), cfg_file))
     if selected_filepath is None:
         # Third priority: default filepath
