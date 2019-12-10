@@ -439,4 +439,4 @@ def select_config(config_filepath=None,
         # Third priority: default filepath
         _LOGGER.info("Using default config. No config found in env var: {}".format(str(config_env_vars)))
         return default_config_filepath
-    return os.path.abspath(selected_filepath)
+    return os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
