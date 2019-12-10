@@ -213,14 +213,18 @@ class YacAttMap(attmap.PathExAttMap):
         if not getattr(self, RO_KEY, True):
             _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
-        if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
+        ori_fp = getattr(self, FILEPATH_KEY, None)
+        if filepath and ori_fp != filepath:
             # file path has changed, unlock the previously used file if exists
-            if getattr(self, FILEPATH_KEY, None):
-                self._remove_lock(getattr(self, FILEPATH_KEY, None))
-        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+            if ori_fp:
+                self._remove_lock(ori_fp)
+        filepath = _check_filepath(filepath or ori_fp)
         _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
+        except FileNotFoundError:
+            _LOGGER.debug("File '{}' not found".format(filepath))
+            pass
         except Exception as e:
             self._reinit()
             _LOGGER.info("File '{}' was not read, got an exception: {}".format(filepath, e))
@@ -409,12 +413,12 @@ def select_config(config_filepath=None,
     # First priority: given file
     if config_filepath:
         if not check_exist or os.path.isfile(config_filepath):
-            return config_filepath
+            return os.path.abspath(config_filepath)
         _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
         result = on_missing(config_filepath)
         if isinstance(result, Exception):
             raise result
-        return result
+        return os.path.abspath(result)
 
     _LOGGER.debug("No local config file was provided")
     selected_filepath = None
@@ -435,4 +439,4 @@ def select_config(config_filepath=None,
         # Third priority: default filepath
         _LOGGER.info("Using default config. No config found in env var: {}".format(str(config_env_vars)))
         return default_config_filepath
-    return selected_filepath
+    return os.path.abspath(selected_filepath)
