@@ -154,7 +154,7 @@ class TestContextManager:
     @pytest.mark.parametrize("state", [True, False])
     def test_context_manager_does_not_change_state(self, cfg_file, state):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
-        with yacmap as y:
+        with yacmap as _:
             pass
         assert yacmap.writable == state
 
@@ -169,6 +169,19 @@ class TestContextManager:
         assert yacmap1.testattr == "testval"
         del yacmap1["testattr"]
         yacmap1.make_readonly()
+
+    def test_context_works_with_objects_created_from_entries_with_filepath(self, cfg_file):
+        yacmap = yacman.YacAttMap(entries={})
+        setattr(yacmap, yacman.FILEPATH_KEY, cfg_file)
+        with yacmap as _:
+            pass
+
+    def test_context_errors_with_objects_created_from_entries(self, cfg_file):
+        """ Test for TypeError raised in case no valid filepath is set but write requested """
+        yacmap = yacman.YacAttMap(entries={})
+        with pytest.raises(TypeError):
+            with yacmap as _:
+                pass
 
 
 yaml_str = """\
