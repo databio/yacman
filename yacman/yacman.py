@@ -214,8 +214,9 @@ class YacAttMap(attmap.PathExAttMap):
             _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
         if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
-            # file path has changed, unlock the previously used file
-            self._remove_lock(getattr(self, FILEPATH_KEY, None))
+            # file path has changed, unlock the previously used file if exists
+            if getattr(self, FILEPATH_KEY, None):
+                self._remove_lock(getattr(self, FILEPATH_KEY, None))
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
