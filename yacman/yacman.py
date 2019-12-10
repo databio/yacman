@@ -109,7 +109,7 @@ class YacAttMap(attmap.PathExAttMap):
                             exclude_class_list="YacAttMap")
 
     def __enter__(self):
-        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY))
+        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY, True))
         if self.writable:
             return self
         else:
