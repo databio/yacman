@@ -89,6 +89,13 @@ class TestManipulationMethods:
         assert getattr(yacmap, yacman.FILEPATH_KEY) != cfg_file
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
+    def test_make_writable_sets_filepath(self, name, data_path):
+        yacmap = yacman.YacAttMap(entries={})
+        yacmap.make_writable(make_cfg_file_path(name, data_path))
+        assert os.path.exists(make_lock_path(name, data_path))
+        assert getattr(yacmap, yacman.FILEPATH_KEY) is not None
+
+    @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
     def test_make_writable_creates_locks(self, cfg_file, name, data_path):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         yacmap.make_writable(make_cfg_file_path(name, data_path))
