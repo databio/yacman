@@ -109,7 +109,7 @@ class YacAttMap(attmap.PathExAttMap):
                             exclude_class_list="YacAttMap")
 
     def __enter__(self):
-        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY))
+        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY, True))
         if self.writable:
             return self
         else:
@@ -213,13 +213,18 @@ class YacAttMap(attmap.PathExAttMap):
         if not getattr(self, RO_KEY, True):
             _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
             return self
-        if filepath and getattr(self, FILEPATH_KEY, None) != filepath:
-            # file path has changed, unlock the previously used file
-            self._remove_lock(getattr(self, FILEPATH_KEY, None))
-        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        ori_fp = getattr(self, FILEPATH_KEY, None)
+        if filepath and ori_fp != filepath:
+            # file path has changed, unlock the previously used file if exists
+            if ori_fp:
+                self._remove_lock(ori_fp)
+        filepath = _check_filepath(filepath or ori_fp)
         _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
+        except OSError:
+            _LOGGER.debug("File '{}' not found".format(filepath))
+            pass
         except Exception as e:
             self._reinit()
             _LOGGER.info("File '{}' was not read, got an exception: {}".format(filepath, e))
@@ -402,18 +407,18 @@ def select_config(config_filepath=None,
         doesn't exist
     :param bool strict_env: whether to raise an exception if no file path provided
         and environment variables do not point to any files
-    raise: FileNotFoundError: when strict environment variables validation is not passed
+    raise: OSError: when strict environment variables validation is not passed
     """
 
     # First priority: given file
     if config_filepath:
         if not check_exist or os.path.isfile(config_filepath):
-            return config_filepath
+            return os.path.abspath(config_filepath)
         _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
         result = on_missing(config_filepath)
         if isinstance(result, Exception):
             raise result
-        return result
+        return os.path.abspath(result)
 
     _LOGGER.debug("No local config file was provided")
     selected_filepath = None
@@ -428,10 +433,10 @@ def select_config(config_filepath=None,
             _LOGGER.debug("Found config file in {}: {}".format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         if selected_filepath is None and cfg_file and strict_env:
-            raise FileNotFoundError("Environment variable ({}) does not point to any existing file: {}".
+            raise OSError("Environment variable ({}) does not point to any existing file: {}".
                                     format(", ".join(config_env_vars), cfg_file))
     if selected_filepath is None:
         # Third priority: default filepath
         _LOGGER.info("Using default config. No config found in env var: {}".format(str(config_env_vars)))
         return default_config_filepath
-    return selected_filepath
+    return os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
