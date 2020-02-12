@@ -8,7 +8,7 @@ import sys
 import warnings
 
 import attmap
-from ubiquerg import mkabs
+from ubiquerg import mkabs, is_url
 
 from .const import *
 
@@ -353,15 +353,41 @@ def _make_rw(filepath, wait_max=10):
 
 
 def load_yaml(filepath):
-    """
-    Read a YAML file
+    """ Load a yaml file into a python dict """
 
-    :param str filepath: path to the file to read
-    :return dict: read data
-    """
-    with open(filepath, 'r') as f:
-        data = yaml.safe_load(f)
-    return data
+    def read_yaml_file(filepath):
+        """
+        Read a YAML file
+
+        :param str filepath: path to the file to read
+        :return dict: read data
+        """
+        with open(filepath, 'r') as f:
+            data = yaml.safe_load(f)
+        return data
+
+    if is_url(filepath):
+        _LOGGER.debug("Got URL: {}".format(filepath))
+        try: #python3
+            from urllib.request import urlopen
+            from urllib.error import HTTPError
+        except: #python2
+            from urllib2 import urlopen       
+            from urllib2 import URLError as HTTPError
+        try:
+            response = urlopen(filepath)
+        except HTTPError as e:
+            raise e
+        data = response.read()      # a `bytes` object
+        text = data.decode('utf-8')
+
+        return yaml.safe_load(text)
+        # yacmap = YacAttMap(yamldata=text)
+    else:
+        # yacmap = YacAttMap(filepath=filepath) 
+
+        return read_yaml_file(filepath)
+
 
 
 def get_first_env_var(ev):
