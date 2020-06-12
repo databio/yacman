@@ -8,7 +8,8 @@ import sys
 import warnings
 
 import attmap
-from ubiquerg import mkabs, is_url
+from ubiquerg import make_lock_path, wait_for_lock, create_file_racefree, \
+    mkabs, is_url
 
 from .const import *
 
@@ -157,7 +158,7 @@ class YacAttMap(attmap.PathExAttMap):
         if getattr(self, RO_KEY, False):
             raise OSError("You can't call write on an object that was created in read-only mode.")
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
-        lock = _make_lock_path(filepath)
+        lock = make_lock_path(filepath)
         if filepath != getattr(self, FILEPATH_KEY, None):
             if os.path.exists(filepath):
                 if not os.path.exists(lock):
@@ -182,7 +183,7 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file to remove the lock for. Not the path to the lock!
         :return bool: whether the lock was found and removed
         """
-        lock = _make_lock_path(_check_filepath(filepath))
+        lock = make_lock_path(_check_filepath(filepath))
         if os.path.exists(lock):
             os.remove(lock)
             return True
@@ -266,88 +267,31 @@ def _check_filepath(filepath):
     #     """ check if object is a string or a list of strings """
     #     return bool(obj) and all(isinstance(elem, str) for elem in obj)
     if not isinstance(filepath, str):
-        raise TypeError("No valid filepath provided. It has to be a str, got: {}".format(filepath.__class__.__name__))
+        raise TypeError("No valid filepath provided. It has to be a str, "
+                        "got: {}".format(filepath.__class__.__name__))
     return filepath
-
-
-def _wait_for_lock(lock_file, wait_max):
-    """
-    Just sleep until the lock_file does not exist
-
-    :param str lock_file: Lock file to wait upon.
-    """
-    sleeptime = .001
-    first_message_flag = False
-    dot_count = 0
-    totaltime = 0
-    while os.path.isfile(lock_file):
-        if first_message_flag is False:
-            sys.stdout.write("Waiting for file lock: {} ".format(lock_file))
-            first_message_flag = True
-        else:
-            sys.stdout.write(".")
-            dot_count += 1
-            if dot_count % 60 == 0:
-                sys.stdout.write("")
-        sys.stdout.flush()
-        time.sleep(sleeptime)
-        totaltime += sleeptime
-        sleeptime = min((sleeptime + .2) * 2, 10)
-        if totaltime >= wait_max:
-            raise RuntimeError("The maximum wait time has been reached and the lock file still exists.")
-    if first_message_flag:
-        print(" File unlocked")
-
-
-def _create_file_racefree(file):
-    """
-    Creates a file, but fails if the file already exists.
-
-    This function will thus only succeed if this process actually creates the file;
-    if the file already exists, it will cause an OSError, solving race conditions.
-
-    :param str file: File to create.
-    """
-    write_lock_flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
-    fd = os.open(file, write_lock_flags)
-    os.close(fd)
-    return file
-
-
-def _make_lock_path(lock_name_base):
-    """
-    Create a collection of path to locks file with given name as bases.
-
-    :param str | list[str] lock_name_base: Lock file names
-    :return str| list[str]: Path to the lock files.
-    """
-    def _mk_lock(lnb):
-        base, name = os.path.split(lnb)
-        lock_name = name if name.startswith(LOCK_PREFIX) else LOCK_PREFIX + name
-        return lock_name if not base else os.path.join(base, lock_name)
-    return [_mk_lock(x) for x in lock_name_base] if isinstance(lock_name_base, list) else _mk_lock(lock_name_base)
 
 
 def _make_rw(filepath, wait_max=10):
     # attempt to lock the file
-    lock_path = _make_lock_path(filepath)
+    lock_path = make_lock_path(filepath)
     if os.path.exists(lock_path):
-        _wait_for_lock(lock_path, wait_max)
+        wait_for_lock(lock_path, wait_max)
     else:
         try:
-            _create_file_racefree(lock_path)
+            create_file_racefree(lock_path)
         except FileNotFoundError:
             parent_dir = os.path.dirname(filepath)
             _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
             os.makedirs(parent_dir)
-            _create_file_racefree(lock_path)
+            create_file_racefree(lock_path)
         except OSError as e:
             if e.errno == errno.EEXIST:
                 # Rare case: file already exists;
                 # the lock has been created in the split second since the last lock existence check,
                 # wait for the lock file to be gone, but no longer than `wait_max`.
                 _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
-                _wait_for_lock(lock_path, wait_max)
+                wait_for_lock(lock_path, wait_max)
             else:
                 raise e
 
@@ -380,14 +324,9 @@ def load_yaml(filepath):
             raise e
         data = response.read()      # a `bytes` object
         text = data.decode('utf-8')
-
         return yaml.safe_load(text)
-        # yacmap = YacAttMap(yamldata=text)
     else:
-        # yacmap = YacAttMap(filepath=filepath) 
-
         return read_yaml_file(filepath)
-
 
 
 def get_first_env_var(ev):

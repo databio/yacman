@@ -1,4 +1,4 @@
 attmap>=0.12.9
 pyyaml>=3.13
 oyaml
-ubiquerg>=0.4.9
+ubiquerg>=0.6.0-dev
