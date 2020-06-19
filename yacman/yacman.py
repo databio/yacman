@@ -272,7 +272,7 @@ def _check_filepath(filepath):
     return filepath
 
 
-def _make_rw(filepath, wait_max=10):
+def _make_rw(filepath, wait_max=30):
     # attempt to lock the file
     lock_path = make_lock_path(filepath)
     if os.path.exists(lock_path):
