@@ -1,5 +1,5 @@
 import os
-from collections import Iterable
+from collections.abc import Iterable
 import oyaml as yaml
 import logging
 import errno
