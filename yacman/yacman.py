@@ -272,29 +272,28 @@ def _check_filepath(filepath):
     return filepath
 
 
-
 def _make_rw(filepath, wait_max=30):
-    # attempt to lock the file
     lock_path = make_lock_path(filepath)
-    if os.path.exists(lock_path):
-        wait_for_lock(lock_path, wait_max)
-    else:
-        try:
+    # wait until no lock is present
+    wait_for_lock(lock_path, wait_max)
+    # attempt to lock the file
+    try:
+        create_file_racefree(lock_path)
+    except FileNotFoundError:
+        parent_dir = os.path.dirname(filepath)
+        _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
+        os.makedirs(parent_dir)
+        create_file_racefree(lock_path)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            # Rare case: file already exists;
+            # the lock has been created in the split second since the last lock existence check,
+            # wait for the lock file to be gone, but no longer than `wait_max`.
+            _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
+            wait_for_lock(lock_path, wait_max)
             create_file_racefree(lock_path)
-        except FileNotFoundError:
-            parent_dir = os.path.dirname(filepath)
-            _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
-            os.makedirs(parent_dir)
-            create_file_racefree(lock_path)
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                # Rare case: file already exists;
-                # the lock has been created in the split second since the last lock existence check,
-                # wait for the lock file to be gone, but no longer than `wait_max`.
-                _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
-                wait_for_lock(lock_path, wait_max)
-            else:
-                raise e
+        else:
+            raise e
 
 
 def load_yaml(filepath):
