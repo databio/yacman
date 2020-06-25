@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.6.8] -- 2020-06-25
 ### Changed
 - extended lock wait time and the frequency of checks
+- drop Python 2 support
 ### Fixed
 - a problem with file locking after other process unlocked it before the timeout
 
