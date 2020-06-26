@@ -77,13 +77,12 @@ class YacAttMap(attmap.PathExAttMap):
 
         if writable:
             if filepath:
-                _make_rw(filepath, wait_max)
+                create_lock(filepath, wait_max)
             else:
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            read_lock = not writable
-            file_contents = load_yaml(filepath, lock=read_lock)
+            file_contents = load_yaml(filepath)
             if entries:
                 file_contents.update(entries)
             entries = file_contents
@@ -169,7 +168,7 @@ class YacAttMap(attmap.PathExAttMap):
             if getattr(self, FILEPATH_KEY, None):
                 self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
-            _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+            create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
@@ -221,7 +220,7 @@ class YacAttMap(attmap.PathExAttMap):
             if ori_fp:
                 self._remove_lock(ori_fp)
         filepath = _check_filepath(filepath or ori_fp)
-        _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
         except OSError:
@@ -273,46 +272,18 @@ def _check_filepath(filepath):
     return filepath
 
 
-def _make_rw(filepath, wait_max=30):
-    lock_path = make_lock_path(filepath)
-    # wait until no lock is present
-    wait_for_lock(lock_path, wait_max)
-    # attempt to lock the file
-    try:
-        create_file_racefree(lock_path)
-    except FileNotFoundError:
-        parent_dir = os.path.dirname(filepath)
-        _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
-        os.makedirs(parent_dir)
-        create_file_racefree(lock_path)
-    except Exception as e:
-        if e.errno == errno.EEXIST:
-            # Rare case: file already exists;
-            # the lock has been created in the split second since the last lock existence check,
-            # wait for the lock file to be gone, but no longer than `wait_max`.
-            _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
-            wait_for_lock(lock_path, wait_max)
-            create_file_racefree(lock_path)
-        else:
-            raise e
-
-
-def load_yaml(filepath, lock=False):
+def load_yaml(filepath):
     """ Load a yaml file into a python dict """
 
-    def read_yaml_file(filepath, lock=False):
+    def read_yaml_file(filepath):
         """
         Read a YAML file
 
         :param str filepath: path to the file to read
         :return dict: read data
         """
-        if lock:
-            create_lock(filepath, wait_max=30)
         with open(filepath, 'r') as f:
             data = yaml.safe_load(f)
-        if lock:
-            remove_lock(filepath)
         return data
 
     if is_url(filepath):
@@ -331,7 +302,7 @@ def load_yaml(filepath, lock=False):
         text = data.decode('utf-8')
         return yaml.safe_load(text)
     else:
-        return read_yaml_file(filepath, lock)
+        return read_yaml_file(filepath)
 
 
 def get_first_env_var(ev):
