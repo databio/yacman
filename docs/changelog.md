@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.6.9] -- unreleased
+### Changed
+- improved file locking 
+
 ## [0.6.8] -- 2020-06-25
 ### Changed
 - extended lock wait time and the frequency of checks
