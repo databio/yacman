@@ -9,7 +9,7 @@ import warnings
 
 import attmap
 from ubiquerg import make_lock_path, wait_for_lock, create_file_racefree, \
-    mkabs, is_url
+    mkabs, is_url, create_lock, remove_lock
 
 from .const import *
 
@@ -82,7 +82,8 @@ class YacAttMap(attmap.PathExAttMap):
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            file_contents = load_yaml(filepath)
+            read_lock = not writable
+            file_contents = load_yaml(filepath, lock=read_lock)
             if entries:
                 file_contents.update(entries)
             entries = file_contents
@@ -284,7 +285,7 @@ def _make_rw(filepath, wait_max=30):
         _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
         os.makedirs(parent_dir)
         create_file_racefree(lock_path)
-    except OSError as e:
+    except Exception as e:
         if e.errno == errno.EEXIST:
             # Rare case: file already exists;
             # the lock has been created in the split second since the last lock existence check,
@@ -296,18 +297,22 @@ def _make_rw(filepath, wait_max=30):
             raise e
 
 
-def load_yaml(filepath):
+def load_yaml(filepath, lock=False):
     """ Load a yaml file into a python dict """
 
-    def read_yaml_file(filepath):
+    def read_yaml_file(filepath, lock=False):
         """
         Read a YAML file
 
         :param str filepath: path to the file to read
         :return dict: read data
         """
+        if lock:
+            create_lock(filepath, wait_max=30)
         with open(filepath, 'r') as f:
             data = yaml.safe_load(f)
+        if lock:
+            remove_lock(filepath)
         return data
 
     if is_url(filepath):
@@ -326,7 +331,7 @@ def load_yaml(filepath):
         text = data.decode('utf-8')
         return yaml.safe_load(text)
     else:
-        return read_yaml_file(filepath)
+        return read_yaml_file(filepath, lock)
 
 
 def get_first_env_var(ev):
