@@ -58,7 +58,7 @@ class YacAttMap(attmap.PathExAttMap):
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME):
+    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME, skip_read_lock=False):
         """
         Object constructor
 
@@ -67,14 +67,8 @@ class YacAttMap(attmap.PathExAttMap):
         :param str yamldata: YAML-formatted string
         :param bool writable: whether to create the object with write capabilities
         :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
+        :param bool reinit: whether the object is being reinitialized
         """
-        # TODO: remove this block with the next major release
-        if isinstance(entries, str) and os.path.exists(entries):
-            warnings.warn("The entries argument should be a dict. If you want to read a file, "
-                          "use the filepath argument.", category=DeprecationWarning)
-            filepath = entries
-            entries = None
-
         if writable:
             if filepath:
                 create_lock(filepath, wait_max)
@@ -82,14 +76,18 @@ class YacAttMap(attmap.PathExAttMap):
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            file_contents = load_yaml(filepath)
+            if not skip_read_lock:
+                create_lock(filepath, wait_max)
+                file_contents = load_yaml(filepath)
+                remove_lock(filepath)
+            else:
+                file_contents = load_yaml(filepath)
             if entries:
                 file_contents.update(entries)
             entries = file_contents
 
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
-
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
@@ -129,9 +127,9 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file that should be read
         """
         if filepath is not None:
-            self.__init__(filepath=filepath)
+            self.__init__(filepath=filepath, skip_read_lock=True)
         else:
-            self.__init__(entries={})
+            self.__init__(entries={}, skip_read_lock=True)
 
     def _excl_from_repr(self, k, cls):
         return k in ATTR_KEYS

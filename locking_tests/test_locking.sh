@@ -5,13 +5,15 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
+rm lock.test.yaml
+rm test.yaml
+
 echo "processes count: $1"
 echo "wait max: $2"
 
-rm test.yaml
 touch test.yaml
 for (( i=1; i<=$1; i++ ))
-do  
+do
+	echo "submitting: $i"
    ./test_locking.py --id $i --path test.yaml --wait $2&
-   echo "submitted: $i"
 done
