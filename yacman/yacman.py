@@ -67,7 +67,7 @@ class YacAttMap(attmap.PathExAttMap):
         :param str yamldata: YAML-formatted string
         :param bool writable: whether to create the object with write capabilities
         :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
-        :param bool reinit: whether the object is being reinitialized
+        :param bool skip_read_lock: whether the file should not be locked for reading
         """
         if writable:
             if filepath:

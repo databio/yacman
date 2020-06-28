@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.6.9] -- unreleased
 ### Changed
 - improved file locking 
+### Removed
+- possibility to provide a file path as `entries` in the `YacAttMap` constructor
 
 ## [0.6.8] -- 2020-06-25
 ### Changed
