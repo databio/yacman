@@ -28,7 +28,7 @@ jobs:
 
     - name: Run locking tests (processes=${{ matrix.proc }}, max wait time=${{ matrix.wait }})
       run: |
-        cd yacman/locking_tests
+        cd locking_tests
         ./test_locking.sh ${{ matrix.proc }} ${{ matrix.wait }}
 
   pytest:
