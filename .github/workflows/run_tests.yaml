@@ -24,7 +24,7 @@ jobs:
       run: python -m pip install --upgrade pip git+https://github.com/pepkit/ubiquerg.git@dev
     
     - name: Install yacman
-      run: python -m pip install --upgrade pip
+      run: python -m pip install .
 
     - name: Run locking tests (processes=${{ matrix.proc }}, max wait time=${{ matrix.wait }})
       run: |
