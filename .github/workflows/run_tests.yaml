@@ -45,6 +45,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install ubiquerg@dev
+      run: python -m pip install --upgrade pip git+https://github.com/pepkit/ubiquerg.git@dev
+
+    - name: Install yacman
+      run: python -m pip install .
+
     - name: Install test dependancies
       run: python -m pip install -r requirements/requirements-test.txt
 
