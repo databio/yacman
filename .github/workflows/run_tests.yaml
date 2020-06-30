@@ -3,6 +3,8 @@ name: test yacman
 on:
   push:
     branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
 
 jobs:
   locking_tests:
@@ -56,3 +58,8 @@ jobs:
 
     - name: Run pytest tests
       run: pytest tests --cov=yacman
+    
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
