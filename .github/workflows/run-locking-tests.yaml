@@ -1,4 +1,4 @@
-name: test locking parallel
+name: Test locking parallel
 
 on:
   push:
