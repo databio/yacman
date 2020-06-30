@@ -1,1 +1,1 @@
-pytest>=3.0.7
+git+git://github.com/pepkit/ubiquerg@dev#ubiquerg
