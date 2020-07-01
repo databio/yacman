@@ -17,12 +17,14 @@ class TestWriting:
         assert os.path.exists(make_cfg_file_path("writeout.yaml", data_path))
         os.remove(make_cfg_file_path("writeout.yaml", data_path))
 
-    @pytest.mark.parametrize(["name", "entry"], [("updated.yaml", "update"), ("updated1.yaml", "update1")])
+    @pytest.mark.parametrize(["name", "entry"], [("updated.yaml", "update"),
+                                                 ("updated1.yaml", "update1")])
     def test_entries_update(self, name, data_path, entry):
         filepath = make_cfg_file_path(name, data_path)
         yacmap = yacman.YacAttMap(entries={})
         yacmap.test = entry
         yacmap.write(filepath=filepath)
+        yacmap.make_readonly()  # need to remove the lock; the next line locks for read
         yacmapin = yacman.YacAttMap(filepath=filepath, writable=False)
         assert(yacmapin.test == entry)
         os.remove(filepath)
@@ -59,8 +61,6 @@ class TestExceptions:
     def test_warnings(self, cfg_file):
         with pytest.warns(None):
             yacman.YacAttMap({}, writable=True)
-        with pytest.warns(DeprecationWarning):
-            yacman.YacAttMap(entries=cfg_file)
 
 
 class TestManipulationMethods:
@@ -128,18 +128,23 @@ class TestManipulationMethods:
 
 
 class TestReading:
-    def test_read_locked_file_in_ro_mode(self, data_path, cfg_file):
-        yacmapin = yacman.YacAttMap(filepath=cfg_file, writable=True)
-        yacmapin.newattr = "value"
-        yacmapin.write()
-        yacmapin2 = yacman.YacAttMap(filepath=cfg_file, writable=False)
-        assert (yacmapin2.newattr == "value")
-
-    def test_read_locked_file_in_rw_mode(self, data_path, cfg_file):
-        """ Here we test that the object constructor waits for a second and raises a Runtime error """
+    def test_locks_before_reading_by_default(self, data_path, cfg_file):
+        """
+        Here we test that the object constructor waits for a second and
+        raises a Runtime error because it tries to lock the file for reading by default
+        """
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         with pytest.raises(RuntimeError):
-            yacman.YacAttMap(filepath=cfg_file, writable=True, wait_max=1)
+            yacman.YacAttMap(filepath=cfg_file, wait_max=1)
+        yacmap.make_readonly()
+
+    def test_skip_locks_before_reading(self, data_path, cfg_file):
+        """
+        Here we test that the object constructor waits for a second and
+        raises a Runtime error because it tries to lock the file for reading by default
+        """
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        yacman.YacAttMap(filepath=cfg_file, skip_read_lock=True)
         yacmap.make_readonly()
 
     def test_locking_is_opt_in(self, cfg_file, locked_cfg_file):

@@ -9,7 +9,7 @@ import warnings
 
 import attmap
 from ubiquerg import make_lock_path, wait_for_lock, create_file_racefree, \
-    mkabs, is_url
+    mkabs, is_url, create_lock, remove_lock
 
 from .const import *
 
@@ -58,7 +58,7 @@ class YacAttMap(attmap.PathExAttMap):
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME):
+    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME, skip_read_lock=False):
         """
         Object constructor
 
@@ -67,29 +67,27 @@ class YacAttMap(attmap.PathExAttMap):
         :param str yamldata: YAML-formatted string
         :param bool writable: whether to create the object with write capabilities
         :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
+        :param bool skip_read_lock: whether the file should not be locked for reading when object is created in read only mode
         """
-        # TODO: remove this block with the next major release
-        if isinstance(entries, str) and os.path.exists(entries):
-            warnings.warn("The entries argument should be a dict. If you want to read a file, "
-                          "use the filepath argument.", category=DeprecationWarning)
-            filepath = entries
-            entries = None
-
         if writable:
             if filepath:
-                _make_rw(filepath, wait_max)
+                create_lock(filepath, wait_max)
             else:
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            file_contents = load_yaml(filepath)
+            if not skip_read_lock and not writable:
+                create_lock(filepath, wait_max)
+                file_contents = load_yaml(filepath)
+                remove_lock(filepath)
+            else:
+                file_contents = load_yaml(filepath)
             if entries:
                 file_contents.update(entries)
             entries = file_contents
 
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
-
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
@@ -129,9 +127,9 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file that should be read
         """
         if filepath is not None:
-            self.__init__(filepath=filepath)
+            self.__init__(filepath=filepath, skip_read_lock=True)
         else:
-            self.__init__(entries={})
+            self.__init__(entries={}, skip_read_lock=True)
 
     def _excl_from_repr(self, k, cls):
         return k in ATTR_KEYS
@@ -168,7 +166,7 @@ class YacAttMap(attmap.PathExAttMap):
             if getattr(self, FILEPATH_KEY, None):
                 self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
-            _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+            create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         setattr(self, RO_KEY, False)
         with open(filepath, 'w') as f:
             f.write(self.to_yaml())
@@ -220,7 +218,7 @@ class YacAttMap(attmap.PathExAttMap):
             if ori_fp:
                 self._remove_lock(ori_fp)
         filepath = _check_filepath(filepath or ori_fp)
-        _make_rw(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
         except OSError:
@@ -270,30 +268,6 @@ def _check_filepath(filepath):
         raise TypeError("No valid filepath provided. It has to be a str, "
                         "got: {}".format(filepath.__class__.__name__))
     return filepath
-
-
-def _make_rw(filepath, wait_max=30):
-    lock_path = make_lock_path(filepath)
-    # wait until no lock is present
-    wait_for_lock(lock_path, wait_max)
-    # attempt to lock the file
-    try:
-        create_file_racefree(lock_path)
-    except FileNotFoundError:
-        parent_dir = os.path.dirname(filepath)
-        _LOGGER.info("Directory does not exist, creating: {}".format(parent_dir))
-        os.makedirs(parent_dir)
-        create_file_racefree(lock_path)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            # Rare case: file already exists;
-            # the lock has been created in the split second since the last lock existence check,
-            # wait for the lock file to be gone, but no longer than `wait_max`.
-            _LOGGER.info("Could not create a lock file, it already exists: {}".format(lock_path))
-            wait_for_lock(lock_path, wait_max)
-            create_file_racefree(lock_path)
-        else:
-            raise e
 
 
 def load_yaml(filepath):
