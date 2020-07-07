@@ -102,12 +102,7 @@ class AliasedYacAttMap(YacAttMap):
 
     def set_alias(self, key, alias, force=False):
         """
-        Assign a human-readable alias to a genome identifier.
-
-        Genomes are identified by a unique identifier which is derived from the
-        FASTA file (part of fasta asset). This way we can ensure genome
-        provenance and compatibility with the server. This function maps a
-        human-readable identifier to make referring to the genomes easier.
+        Assign an alias to a key in the object.
 
         :param str key: name of the key to assign to an alias for
         :param str alias: alias to use
@@ -121,5 +116,4 @@ class AliasedYacAttMap(YacAttMap):
                 return False
         self[ALIASES_KEY][key] = alias
         _LOGGER.info("Added alias ({}: {})".format(key, alias))
-        _LOGGER.debug("aliases: {}".format(self[ALIASES_KEY]))
         return True
