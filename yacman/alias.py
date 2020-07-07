@@ -37,13 +37,14 @@ class AliasedYacAttMap(YacAttMap):
         setattr(self, ALIASES_KEY, None)
         if not exact:
             if isinstance(aliases, Mapping):
-                setattr(self, ALIASES_KEY, aliases())
+                setattr(self, ALIASES_KEY, aliases)
             elif callable(aliases):
                 try:
                     res = aliases()
                 except Exception as e:
-                    _LOGGER.warning("callable '{}' errored: {}".
-                                    format(str(e), ALIASES_KEY))
+                    _LOGGER.warning(
+                        "Provided callable aliases '{}' errored: {}".format(
+                            aliases.__name__, getattr(e, 'message', repr(e))))
                 else:
                     if isinstance(res, Mapping):
                         setattr(self, ALIASES_KEY, res)
@@ -53,15 +54,21 @@ class AliasedYacAttMap(YacAttMap):
 
         super(AliasedYacAttMap, self).__init__(
             entries=entries, filepath=filepath, yamldata=yamldata,
-            writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock)
+            writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock
+        )
 
     def __getitem__(self, item, expand=True):
+        """
+        This item accession method will try to access the value by a literal
+        key. If the key is not defined in the object it will try to access the
+        key by it's alias, if defined. If both fail, a KeyError is raised.
+        """
         try:
             return super(AliasedYacAttMap, self).__getitem__(item=item,
                                                              expand=expand)
         except KeyError:
             try:
-                alias = self.get_key_alias(item)
+                alias = self.get_alias(item)
             except (UndefinedAliasError, FileFormatError):
                 raise KeyError(item)
             else:
@@ -70,21 +77,49 @@ class AliasedYacAttMap(YacAttMap):
 
     @property
     def alias_dict(self):
-        return getattr(self, ALIASES_KEY)
-
-    def get_key_alias(self, alias):
         """
-        Get the genome digest for human readable alias
+        Get the alias mapping bound to the object
+        """
+        return self[ALIASES_KEY]
 
-        :param str alias: human-readable alias to get the genome digest for
-        :return str: genome digest
-        :raise GenomeConfigFormatError: if "genome_digests" section does
-            not exist in the config
+    def get_alias(self, key):
+        """
+        Get the alias for key in the object
+
+        :param str key: key to find an alias for
+        :return str: alias match by the key
+        :raise GenomeConfigFormatError: if aliases mapping has not been defined
+            for this object
         :raise UndefinedAliasError: if a no digest has been defined for the
             requested alias
         """
         if self.alias_dict is None:
-            raise FileFormatError("alias mapping is not defined")
-        if alias not in self.alias_dict.keys():
-            raise UndefinedAliasError("No alias defined for '{}'".format(alias))
-        return self.alias_dict[alias]
+            raise FileFormatError("Alias mapping is not defined")
+        for k, v in self.alias_dict.items():
+            if v == key:
+                return k
+        raise UndefinedAliasError("No alias defined for: {}".format(key))
+
+    def set_alias(self, key, alias, force=False):
+        """
+        Assign a human-readable alias to a genome identifier.
+
+        Genomes are identified by a unique identifier which is derived from the
+        FASTA file (part of fasta asset). This way we can ensure genome
+        provenance and compatibility with the server. This function maps a
+        human-readable identifier to make referring to the genomes easier.
+
+        :param str key: name of the key to assign to an alias for
+        :param str alias: alias to use
+        :param bool force: whether to force overwrite if the alias exists
+        :return bool: whether the alias has been set
+        """
+        if key in self.alias_dict.keys():
+            _LOGGER.warning("'{}' already in aliases ({})".
+                            format(key, self.alias_dict[key]))
+            if not force:
+                return False
+        self[ALIASES_KEY][key] = alias
+        _LOGGER.info("Added alias ({}: {})".format(key, alias))
+        _LOGGER.debug("aliases: {}".format(self[ALIASES_KEY]))
+        return True
