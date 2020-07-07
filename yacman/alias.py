@@ -16,7 +16,7 @@ class AliasedYacAttMap(YacAttMap):
     """
     def __init__(self, entries=None, filepath=None, yamldata=None,
                  writable=False, wait_max=DEFAULT_WAIT_TIME,
-                 skip_read_lock=False, aliases=None):
+                 skip_read_lock=False, aliases=None, exact=False):
         """
         Object constructor
 
@@ -32,23 +32,25 @@ class AliasedYacAttMap(YacAttMap):
             reading when object is created in read only mode
         :param Mapping | callable() -> Mapping aliases: aliases mapping to use
             or a callable that produces such a mapping.
+        :param bool exact: whether aliases should not be used, even if defined
         """
-        if isinstance(aliases, Mapping):
-            setattr(self, ALIASES_KEY, aliases())
-        elif callable(aliases):
-            try:
-                res = aliases()
-            except Exception as e:
-                _LOGGER.warning("callable '{}' errored: {}".
-                                format(str(e), ALIASES_KEY))
-                setattr(self, ALIASES_KEY, None)
-            else:
-                if isinstance(res, Mapping):
-                    setattr(self, ALIASES_KEY, res)
+        setattr(self, ALIASES_KEY, None)
+        if not exact:
+            if isinstance(aliases, Mapping):
+                setattr(self, ALIASES_KEY, aliases())
+            elif callable(aliases):
+                try:
+                    res = aliases()
+                except Exception as e:
+                    _LOGGER.warning("callable '{}' errored: {}".
+                                    format(str(e), ALIASES_KEY))
                 else:
-                    _LOGGER.warning("callable '{}' did not return a Mapping".
-                                    format(ALIASES_KEY))
-                    setattr(self, ALIASES_KEY, None)
+                    if isinstance(res, Mapping):
+                        setattr(self, ALIASES_KEY, res)
+                    else:
+                        _LOGGER.warning("callable '{}' did not return a Mapping".
+                                        format(ALIASES_KEY))
+
         super(AliasedYacAttMap, self).__init__(
             entries=entries, filepath=filepath, yamldata=yamldata,
             writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock)
@@ -81,8 +83,8 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if a no digest has been defined for the
             requested alias
         """
-        if self.alias_dict:
-            if alias not in self.alias_dict.keys():
-                raise UndefinedAliasError("No alias defined for '{}'".
-                                          format(alias))
+        if self.alias_dict is None:
+            raise FileFormatError("alias mapping is not defined")
+        if alias not in self.alias_dict.keys():
+            raise UndefinedAliasError("No alias defined for '{}'".format(alias))
         return self.alias_dict[alias]
