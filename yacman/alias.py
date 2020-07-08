@@ -68,11 +68,11 @@ class AliasedYacAttMap(YacAttMap):
                                                              expand=expand)
         except KeyError:
             try:
-                alias = self.get_alias(item)
+                key = self.get_key(item)
             except (UndefinedAliasError, FileFormatError):
                 raise KeyError(item)
             else:
-                return super(AliasedYacAttMap, self).__getitem__(item=alias,
+                return super(AliasedYacAttMap, self).__getitem__(item=key,
                                                                  expand=expand)
 
     @property
@@ -90,15 +90,32 @@ class AliasedYacAttMap(YacAttMap):
         :return str: alias match by the key
         :raise GenomeConfigFormatError: if aliases mapping has not been defined
             for this object
-        :raise UndefinedAliasError: if a no digest has been defined for the
+        :raise UndefinedAliasError: if no alias has been defined for the
+            requested key
+        """
+        if self.alias_dict is None:
+            raise FileFormatError("Alias mapping is not defined")
+        if key in self.alias_dict.keys():
+            return self.alias_dict[key]
+        raise UndefinedAliasError("No alias defined for: {}".format(key))
+
+    def get_key(self, alias):
+        """
+        Get the key for alias in the object
+
+        :param str alias: alias to find a key for
+        :return str: key match by the alias
+        :raise GenomeConfigFormatError: if aliases mapping has not been defined
+            for this object
+        :raise UndefinedAliasError: if a no key has been defined for the
             requested alias
         """
         if self.alias_dict is None:
             raise FileFormatError("Alias mapping is not defined")
         for k, v in self.alias_dict.items():
-            if v == key:
+            if v == alias:
                 return k
-        raise UndefinedAliasError("No alias defined for: {}".format(key))
+        raise UndefinedAliasError("No key defined for: {}".format(alias))
 
     def set_alias(self, key, alias, force=False):
         """
