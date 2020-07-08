@@ -126,7 +126,8 @@ class AliasedYacAttMap(YacAttMap):
         :param bool force: whether to force overwrite if the alias exists
         :return bool: whether the alias has been set
         """
-        if key in self.alias_dict.keys():
+        self.setdefault(ALIASES_KEY, dict())
+        if self.alias_dict and key in self.alias_dict.keys():
             _LOGGER.warning("'{}' already in aliases ({})".
                             format(key, self.alias_dict[key]))
             if not force:
