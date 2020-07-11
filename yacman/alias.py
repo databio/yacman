@@ -34,7 +34,7 @@ class AliasedYacAttMap(YacAttMap):
             or a callable that produces such a mapping.
         :param bool exact: whether aliases should not be used, even if defined
         """
-        setattr(self, ALIASES_KEY, None)
+        setattr(self, ALIASES_KEY, {})
         if not exact:
             if isinstance(aliases, Mapping):
                 setattr(self, ALIASES_KEY, aliases)
@@ -69,11 +69,49 @@ class AliasedYacAttMap(YacAttMap):
         except KeyError:
             try:
                 key = self.get_key(item)
-            except (UndefinedAliasError, FileFormatError):
+            except (UndefinedAliasError):
                 raise KeyError(item)
             else:
                 return super(AliasedYacAttMap, self).__getitem__(item=key,
                                                                  expand=expand)
+
+    def __contains__(self, key):
+        """
+        This containment verification method will first try the  literal key.
+        If the key is not defined in the object it will try to use its alias.
+        If both fail, a negative decision is returned; otherwise -- positive.
+        """
+        try:
+            self.__getitem__(key, expand=False)
+        except (UndefinedAliasError, KeyError):
+            try:
+                alias_key = self.get_key(key)
+            except (UndefinedAliasError, KeyError):
+                return False
+            else:
+                try:
+                    self.__getitem__(alias_key, expand=False)
+                except (UndefinedAliasError, KeyError):
+                    return False
+                else:
+                    True
+        else:
+            return True
+
+    def __delitem__(self, key):
+        """
+        This item deletion method will try to remove the item by the literal
+        key or by its alias, if defined.
+        """
+        try:
+            # check whether an alias was used
+            alias_key = self.get_key(alias=key)
+        except (UndefinedAliasError, KeyError):
+            # alias was not used, try to delete the literal key
+            super(AliasedYacAttMap, self).__delitem__(key=key)
+        else:
+            # alias was used, try to delete the alias
+            super(AliasedYacAttMap, self).__delitem__(key=alias_key)
 
     @property
     def alias_dict(self):
@@ -93,8 +131,6 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if no alias has been defined for the
             requested key
         """
-        if self.alias_dict is None:
-            raise FileFormatError("Alias mapping is not defined")
         if key in self.alias_dict.keys():
             return self.alias_dict[key]
         raise UndefinedAliasError("No alias defined for: {}".format(key))
@@ -110,8 +146,6 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if a no key has been defined for the
             requested alias
         """
-        if self.alias_dict is None:
-            raise FileFormatError("Alias mapping is not defined")
         for k, v in self.alias_dict.items():
             if v == alias:
                 return k
@@ -126,8 +160,7 @@ class AliasedYacAttMap(YacAttMap):
         :param bool force: whether to force overwrite if the alias exists
         :return bool: whether the alias has been set
         """
-        self.setdefault(ALIASES_KEY, dict())
-        if self.alias_dict and key in self.alias_dict.keys():
+        if key in self.alias_dict.keys():
             _LOGGER.warning("'{}' already in aliases ({})".
                             format(key, self.alias_dict[key]))
             if not force:
