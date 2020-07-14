@@ -94,7 +94,7 @@ class AliasedYacAttMap(YacAttMap):
                 except (UndefinedAliasError, KeyError):
                     return False
                 else:
-                    True
+                    return True
         else:
             return True
 
@@ -161,10 +161,22 @@ class AliasedYacAttMap(YacAttMap):
         :return bool: whether the alias has been set
         """
         if key in self.alias_dict.keys():
-            _LOGGER.warning("'{}' already in aliases ({})".
+            _LOGGER.debug("'{}' already in aliases ({})".
                             format(key, self.alias_dict[key]))
             if not force:
                 return False
         self[ALIASES_KEY][key] = alias
-        _LOGGER.info("Added alias ({}: {})".format(key, alias))
+        _LOGGER.debug("Added alias ({}: {})".format(key, alias))
         return True
+
+    def remove_alias(self, key):
+        """
+        Remove an alias from the object.
+
+        :param str key: name of the key to remove
+        :return bool: whether the alias has been removed
+        """
+        if key in self.alias_dict.keys():
+            del self[ALIASES_KEY][key]
+            return True
+        return False
