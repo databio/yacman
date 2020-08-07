@@ -1,6 +1,6 @@
 """ Package exception types """
 
-__all__ = ["FileFormatError", "UndefinedAliasError"]
+__all__ = ["FileFormatError", "AliasError", "UndefinedAliasError"]
 
 
 class FileFormatError(Exception):
@@ -8,6 +8,13 @@ class FileFormatError(Exception):
     pass
 
 
-class UndefinedAliasError(Exception):
+class AliasError(Exception):
+    """ Alias related error. """
+    pass
+
+
+class UndefinedAliasError(AliasError):
     """ Alias is is not defined. """
     pass
+
+

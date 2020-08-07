@@ -43,6 +43,7 @@ yaml.SafeLoader.construct_mapping = my_construct_mapping
 yaml.SafeLoader.construct_pairs = my_construct_pairs
 # End hack
 
+
 class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and race-free writing in multi-user contexts.

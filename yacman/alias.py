@@ -36,7 +36,7 @@ class AliasedYacAttMap(YacAttMap):
         """
         setattr(self, ALIASES_KEY, {})
         if not exact:
-            if isinstance(aliases, Mapping):
+            if is_aliases_mapping_valid(aliases):
                 setattr(self, ALIASES_KEY, aliases)
             elif callable(aliases):
                 try:
@@ -46,11 +46,13 @@ class AliasedYacAttMap(YacAttMap):
                         "Provided callable aliases '{}' errored: {}".format(
                             aliases.__name__, getattr(e, 'message', repr(e))))
                 else:
-                    if isinstance(res, Mapping):
+                    if is_aliases_mapping_valid(res):
                         setattr(self, ALIASES_KEY, res)
                     else:
                         _LOGGER.warning("callable '{}' did not return a Mapping".
                                         format(ALIASES_KEY))
+            else:
+                _LOGGER.warning("No aliases provided")
 
         super(AliasedYacAttMap, self).__init__(
             entries=entries, filepath=filepath, yamldata=yamldata,
@@ -69,7 +71,7 @@ class AliasedYacAttMap(YacAttMap):
         except KeyError:
             try:
                 key = self.get_key(item)
-            except (UndefinedAliasError):
+            except UndefinedAliasError:
                 raise KeyError(item)
             else:
                 return super(AliasedYacAttMap, self).__getitem__(item=key,
@@ -120,7 +122,7 @@ class AliasedYacAttMap(YacAttMap):
         """
         return self[ALIASES_KEY]
 
-    def get_alias(self, key):
+    def get_aliases(self, key):
         """
         Get the alias for key in the object
 
@@ -147,36 +149,91 @@ class AliasedYacAttMap(YacAttMap):
             requested alias
         """
         for k, v in self.alias_dict.items():
-            if v == alias:
+            if alias in v:
                 return k
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
-    def set_alias(self, key, alias, force=False):
+    def set_aliases(self, key, aliases, overwrite=False):
         """
         Assign an alias to a key in the object.
 
         :param str key: name of the key to assign to an alias for
-        :param str alias: alias to use
-        :param bool force: whether to force overwrite if the alias exists
+        :param str | list[str] aliases: alias to use
+        :param bool overwrite: whether to force overwrite existring aliases
+            list or append to it
         :return bool: whether the alias has been set
         """
-        if key in self.alias_dict.keys():
+        aliases = _make_list_of_aliases(aliases)
+        if key in self.alias_dict.keys() and not overwrite:
             _LOGGER.debug("'{}' already in aliases ({})".
                             format(key, self.alias_dict[key]))
-            if not force:
-                return False
-        self[ALIASES_KEY][key] = alias
-        _LOGGER.debug("Added alias ({}: {})".format(key, alias))
+            for alias in aliases:
+                if alias not in self[ALIASES_KEY][key]:
+                    self[ALIASES_KEY][key].append(alias)
+        else:
+            self[ALIASES_KEY][key] = aliases
+        _LOGGER.debug("Added aliases ({}: {})".format(key, aliases))
         return True
 
-    def remove_alias(self, key):
+    def remove_aliases(self, key, aliases=None):
         """
         Remove an alias from the object.
 
         :param str key: name of the key to remove
+        :param str aliases: list of aliases to remove
         :return bool: whether the alias has been removed
         """
+        aliases = _make_list_of_aliases(aliases)
         if key in self.alias_dict.keys():
-            del self[ALIASES_KEY][key]
+            if aliases is None:
+                del self[ALIASES_KEY][key]
+                return True
+            else:
+                for alias in aliases:
+                    try:
+                        self[ALIASES_KEY][key].remove(alias)
+                    except ValueError as e:
+                        _LOGGER.warning("Did not remove '{}' from aliases: {}".
+                                        format(alias, str(e)))
+            if len(self[ALIASES_KEY][key]) == 0:
+                del self[ALIASES_KEY][key]
             return True
         return False
+
+
+def is_aliases_mapping_valid(aliases):
+    """
+    Determine if the aliases mapping is formatted properly, e.g. {"k": ["v"]}
+
+    :param Mapping[list] aliases: mapping to verify
+    :return bool: whether the mapping adheres to the correct format
+    """
+    if isinstance(aliases, Mapping):
+        if all([isinstance(v, list) for k, v in aliases.items()]):
+            return True
+    _LOGGER.warning("Provided aliases mapping is invalid; "
+                    "Mapping[list] required")
+    return False
+
+
+def _make_list_of_aliases(aliases):
+    """
+    Check and/or produce a proper aliases input
+
+    :param str | list[str] aliases: alias or collection of aliases to check
+    :return list[str]: list of aliases
+    :raise AliasError: if the input format does not meet the requirements
+    """
+
+    def _raise_alias_class(x):
+        raise AliasError("A string or a list of strings is required, "
+                         "got: {}".format(x.__class__.__name__))
+
+    if isinstance(aliases, str):
+        aliases = [aliases]
+    elif isinstance(aliases, list):
+        assert all([isinstance(x, str) for x in aliases]), \
+            _raise_alias_class(aliases)
+    else:
+        _raise_alias_class(aliases)
+    return aliases
