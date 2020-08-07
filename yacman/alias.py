@@ -36,7 +36,7 @@ class AliasedYacAttMap(YacAttMap):
         """
         setattr(self, ALIASES_KEY, {})
         if not exact:
-            if is_aliases_mapping_valid(aliases):
+            if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases):
                 setattr(self, ALIASES_KEY, aliases)
             elif callable(aliases):
                 try:
@@ -183,21 +183,24 @@ class AliasedYacAttMap(YacAttMap):
         :param str aliases: list of aliases to remove
         :return bool: whether the alias has been removed
         """
-        aliases = _make_list_of_aliases(aliases)
+        any_removed = False
+        aliases_list = _make_list_of_aliases(aliases)
         if key in self.alias_dict.keys():
-            if aliases is None:
+            if aliases_list is None:
                 del self[ALIASES_KEY][key]
                 return True
             else:
-                for alias in aliases:
+                for alias in aliases_list:
                     try:
                         self[ALIASES_KEY][key].remove(alias)
                     except ValueError as e:
                         _LOGGER.warning("Did not remove '{}' from aliases: {}".
                                         format(alias, str(e)))
+                    else:
+                        any_removed = True
             if len(self[ALIASES_KEY][key]) == 0:
                 del self[ALIASES_KEY][key]
-            return True
+            return any_removed
         return False
 
 
@@ -228,7 +231,8 @@ def _make_list_of_aliases(aliases):
     def _raise_alias_class(x):
         raise AliasError("A string or a list of strings is required, "
                          "got: {}".format(x.__class__.__name__))
-
+    if aliases is None:
+        return aliases
     if isinstance(aliases, str):
         aliases = [aliases]
     elif isinstance(aliases, list):
