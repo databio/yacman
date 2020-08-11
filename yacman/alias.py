@@ -157,7 +157,7 @@ class AliasedYacAttMap(YacAttMap):
         Get the alias for key in the object
 
         :param str key: key to find an alias for
-        :return str: alias match by the key
+        :return list[str]: aliases matched by the key
         :raise GenomeConfigFormatError: if aliases mapping has not been defined
             for this object
         :raise UndefinedAliasError: if no alias has been defined for the
