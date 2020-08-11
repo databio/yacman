@@ -2,6 +2,7 @@ from .yacman import YacAttMap
 from .const import *
 from .exceptions import *
 from collections.abc import Mapping
+from warnings import warn
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ class AliasedYacAttMap(YacAttMap):
     """
     def __init__(self, entries=None, filepath=None, yamldata=None,
                  writable=False, wait_max=DEFAULT_WAIT_TIME,
-                 skip_read_lock=False, aliases=None, exact=False):
+                 skip_read_lock=False, aliases=None, exact=False,
+                 aliases_strict=None):
         """
         Object constructor
 
@@ -33,6 +35,8 @@ class AliasedYacAttMap(YacAttMap):
         :param Mapping | callable(self) -> Mapping aliases: aliases mapping to
             use or a callable that produces such a mapping out of the object
             to set the aliases for
+        :param bool aliases_strict: how to handle aliases mapping issues;
+            None for warning, True for AliasError, False to disregard
         :param bool exact: whether aliases should not be used, even if defined
         """
 
@@ -43,23 +47,28 @@ class AliasedYacAttMap(YacAttMap):
 
         setattr(self, ALIASES_KEY_RAW, {})
         if not exact:
-            if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases):
+            if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases, aliases_strict):
                 setattr(self, ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
                 try:
                     res = aliases(self)
                 except Exception as e:
-                    _LOGGER.warning(
+                    _emit_msg(
+                        aliases_strict,
                         "Provided callable aliases '{}' errored: {}".format(
-                            aliases.__name__, getattr(e, 'message', repr(e))))
+                            aliases.__name__, getattr(e, 'message', repr(e)))
+                    )
                 else:
                     if is_aliases_mapping_valid(res):
                         setattr(self, ALIASES_KEY_RAW, res)
                     else:
-                        _LOGGER.warning("callable '{}' did not return a Mapping".
-                                        format(aliases.__name__))
+                        _emit_msg(
+                            aliases_strict,
+                            "callable '{}' did not return a Mapping".
+                                format(aliases.__name__)
+                        )
             else:
-                _LOGGER.warning("No aliases provided")
+                _LOGGER.info("No aliases provided")
 
         # convert the original, condensed mapping to a data structure with
         # optimal time complexity
@@ -233,18 +242,19 @@ class AliasedYacAttMap(YacAttMap):
             return any_removed
 
 
-def is_aliases_mapping_valid(aliases):
+def is_aliases_mapping_valid(aliases, strictness=None):
     """
     Determine if the aliases mapping is formatted properly, e.g. {"k": ["v"]}
 
     :param Mapping[list] aliases: mapping to verify
+    :param bool strictness: how to handle format issues
     :return bool: whether the mapping adheres to the correct format
     """
     if isinstance(aliases, Mapping):
         if all([isinstance(v, list) for k, v in aliases.items()]):
             return True
-    _LOGGER.warning("Provided aliases mapping is invalid; "
-                    "Mapping[list] required")
+    _emit_msg(strictness,
+              "Provided aliases mapping is invalid; Mapping[list] required")
     return False
 
 
@@ -270,3 +280,19 @@ def _make_list_of_aliases(aliases):
     else:
         _raise_alias_class(aliases)
     return aliases
+
+
+def _emit_msg(strictness, msg):
+    """
+    Emit a message based on the selected strictness level
+
+    :param bool strictness: None for warning, True for AliasError,
+        False for debug log
+    :param str msg: a message to emit
+    """
+    if strictness:
+        raise AliasError(msg)
+    elif strictness is None:
+        warn(msg)
+    else:
+        _LOGGER.debug(msg)
