@@ -30,34 +30,43 @@ class AliasedYacAttMap(YacAttMap):
             file that data will be read from is locked
         :param bool skip_read_lock: whether the file should not be locked for
             reading when object is created in read only mode
-        :param Mapping | callable() -> Mapping aliases: aliases mapping to use
-            or a callable that produces such a mapping.
+        :param Mapping | callable(self) -> Mapping aliases: aliases mapping to
+            use or a callable that produces such a mapping out of the object
+            to set the aliases for
         :param bool exact: whether aliases should not be used, even if defined
         """
-        setattr(self, ALIASES_KEY, {})
+
+        super(AliasedYacAttMap, self).__init__(
+            entries=entries, filepath=filepath, yamldata=yamldata,
+            writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock
+        )
+
+        setattr(self, ALIASES_KEY_RAW, {})
         if not exact:
             if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases):
-                setattr(self, ALIASES_KEY, aliases)
+                setattr(self, ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
                 try:
-                    res = aliases()
+                    res = aliases(self)
                 except Exception as e:
                     _LOGGER.warning(
                         "Provided callable aliases '{}' errored: {}".format(
                             aliases.__name__, getattr(e, 'message', repr(e))))
                 else:
                     if is_aliases_mapping_valid(res):
-                        setattr(self, ALIASES_KEY, res)
+                        setattr(self, ALIASES_KEY_RAW, res)
                     else:
                         _LOGGER.warning("callable '{}' did not return a Mapping".
-                                        format(ALIASES_KEY))
+                                        format(aliases.__name__))
             else:
                 _LOGGER.warning("No aliases provided")
 
-        super(AliasedYacAttMap, self).__init__(
-            entries=entries, filepath=filepath, yamldata=yamldata,
-            writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock
-        )
+        # convert the original, condensed mapping to a data structure with
+        # optimal time complexity
+        setattr(self, ALIASES_KEY, {})
+        for k, v in getattr(self, ALIASES_KEY_RAW).items():
+            for alias in v:
+                self[ALIASES_KEY][alias] = k
 
     def __getitem__(self, item, expand=True):
         """
@@ -119,8 +128,20 @@ class AliasedYacAttMap(YacAttMap):
     def alias_dict(self):
         """
         Get the alias mapping bound to the object
+
+        :return dict: alias-key mapping (one to one)
         """
         return self[ALIASES_KEY]
+
+    @property
+    def _raw_alias_dict(self):
+        """
+        Get the raw alias mapping provided at the object construction.
+        It is not updated, so it should not be used to the key-alias lookup
+
+        :return dict: key-aliases mapping (one to many)
+        """
+        return self[ALIASES_KEY_RAW]
 
     def get_aliases(self, key):
         """
@@ -133,8 +154,12 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if no alias has been defined for the
             requested key
         """
-        if key in self.alias_dict.keys():
-            return self.alias_dict[key]
+        aliases = []
+        for a, k in self.alias_dict.items():
+            if k == key:
+                aliases.append(a)
+        if aliases:
+            return aliases
         raise UndefinedAliasError("No alias defined for: {}".format(key))
 
     def get_key(self, alias):
@@ -148,32 +173,42 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if a no key has been defined for the
             requested alias
         """
-        for k, v in self.alias_dict.items():
-            if alias in v:
-                return k
+        if alias in self.alias_dict.keys():
+            return self.alias_dict[alias]
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
-    def set_aliases(self, key, aliases, overwrite=False):
+    def set_aliases(self, key, aliases, overwrite=False, reset_key=False):
         """
         Assign an alias to a key in the object.
 
         :param str key: name of the key to assign to an alias for
         :param str | list[str] aliases: alias to use
-        :param bool overwrite: whether to force overwrite existring aliases
-            list or append to it
+        :param bool overwrite: whether to force overwrite the key for an
+            already defined alias
+        :param bool reset_key: whether to force remove existing aliases
+            for a key
         :return bool: whether the alias has been set
         """
-        aliases = _make_list_of_aliases(aliases)
-        if key in self.alias_dict.keys() and not overwrite:
-            _LOGGER.debug("'{}' already in aliases ({})".
-                            format(key, self.alias_dict[key]))
-            for alias in aliases:
-                if alias not in self[ALIASES_KEY][key]:
-                    self[ALIASES_KEY][key].append(alias)
-        else:
-            self[ALIASES_KEY][key] = aliases
+        if reset_key:
+            try:
+                current_aliases = self.get_aliases(key)
+            except UndefinedAliasError:
+                pass
+            else:
+                for a in current_aliases:
+                    del self[ALIASES_KEY][a]
+
+        any_set = False
+        for alias in _make_list_of_aliases(aliases):
+            if alias in self[ALIASES_KEY]:
+                if overwrite:
+                    self[ALIASES_KEY][alias] = key
+                    any_set = True
+            else:
+                self[ALIASES_KEY][alias] = key
+                any_set = True
         _LOGGER.debug("Added aliases ({}: {})".format(key, aliases))
-        return True
+        return any_set
 
     def remove_aliases(self, key, aliases=None):
         """
@@ -184,24 +219,18 @@ class AliasedYacAttMap(YacAttMap):
         :return bool: whether the alias has been removed
         """
         any_removed = False
-        aliases_list = _make_list_of_aliases(aliases)
-        if key in self.alias_dict.keys():
-            if aliases_list is None:
-                del self[ALIASES_KEY][key]
-                return True
-            else:
-                for alias in aliases_list:
-                    try:
-                        self[ALIASES_KEY][key].remove(alias)
-                    except ValueError as e:
-                        _LOGGER.warning("Did not remove '{}' from aliases: {}".
-                                        format(alias, str(e)))
-                    else:
-                        any_removed = True
-            if len(self[ALIASES_KEY][key]) == 0:
-                del self[ALIASES_KEY][key]
+        aliases = _make_list_of_aliases(aliases)
+        try:
+            current_aliases = self.get_aliases(key)
+        except UndefinedAliasError:
+            return False
+        else:
+            existing_aliases = list(set(aliases) & set(current_aliases)) \
+                if aliases else current_aliases
+            for alias in existing_aliases:
+                del self[ALIASES_KEY][alias]
+                any_removed = True
             return any_removed
-        return False
 
 
 def is_aliases_mapping_valid(aliases):
