@@ -3,6 +3,7 @@ from .const import *
 from .exceptions import *
 from collections.abc import Mapping
 from warnings import warn
+from inspect import getfullargspec
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,12 +51,18 @@ class AliasedYacAttMap(YacAttMap):
             if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases, aliases_strict):
                 setattr(self, ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
+                if len(getfullargspec(aliases).args) != 1:
+                    _emit_msg(
+                        aliases_strict,
+                        "Provided function '{}' must be a one-arg function".
+                            format(aliases.__name__)
+                    )
                 try:
                     res = aliases(self)
                 except Exception as e:
                     _emit_msg(
                         aliases_strict,
-                        "Provided callable aliases '{}' errored: {}".format(
+                        "Provided function '{}' errored: {}".format(
                             aliases.__name__, getattr(e, 'message', repr(e)))
                     )
                 else:
