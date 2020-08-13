@@ -205,6 +205,7 @@ class AliasedYacAttMap(YacAttMap):
             for a key
         :return list[str]: list of set aliases
         """
+        removed_aliases = []
         if reset_key:
             try:
                 current_aliases = self.get_aliases(key)
@@ -213,6 +214,7 @@ class AliasedYacAttMap(YacAttMap):
             else:
                 for a in current_aliases:
                     del self[ALIASES_KEY][a]
+                    removed_aliases.append(a)
 
         set_aliases = []
         for alias in _make_list_of_aliases(aliases):
@@ -224,7 +226,7 @@ class AliasedYacAttMap(YacAttMap):
                 self[ALIASES_KEY][alias] = key
                 set_aliases.append(alias)
         _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
-        return set_aliases
+        return set_aliases, removed_aliases
 
     def remove_aliases(self, key, aliases=None):
         """
