@@ -203,7 +203,7 @@ class AliasedYacAttMap(YacAttMap):
             already defined alias
         :param bool reset_key: whether to force remove existing aliases
             for a key
-        :return bool: whether the alias has been set
+        :return list[str]: list of set aliases
         """
         if reset_key:
             try:
@@ -214,17 +214,17 @@ class AliasedYacAttMap(YacAttMap):
                 for a in current_aliases:
                     del self[ALIASES_KEY][a]
 
-        any_set = False
+        set_aliases = []
         for alias in _make_list_of_aliases(aliases):
             if alias in self[ALIASES_KEY]:
                 if overwrite:
                     self[ALIASES_KEY][alias] = key
-                    any_set = True
+                    set_aliases.append(alias)
             else:
                 self[ALIASES_KEY][alias] = key
-                any_set = True
-        _LOGGER.debug("Added aliases ({}: {})".format(key, aliases))
-        return any_set
+                set_aliases.append(alias)
+        _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
+        return set_aliases
 
     def remove_aliases(self, key, aliases=None):
         """
@@ -232,21 +232,21 @@ class AliasedYacAttMap(YacAttMap):
 
         :param str key: name of the key to remove
         :param str aliases: list of aliases to remove
-        :return bool: whether the alias has been removed
+        :return list[str]: list of removed aliases
         """
-        any_removed = False
+        removed = []
         aliases = _make_list_of_aliases(aliases)
         try:
             current_aliases = self.get_aliases(key)
         except UndefinedAliasError:
-            return False
+            return removed
         else:
             existing_aliases = list(set(aliases) & set(current_aliases)) \
                 if aliases else current_aliases
             for alias in existing_aliases:
                 del self[ALIASES_KEY][alias]
-                any_removed = True
-            return any_removed
+                removed.append(alias)
+            return removed
 
 
 def is_aliases_mapping_valid(aliases, strictness=None):

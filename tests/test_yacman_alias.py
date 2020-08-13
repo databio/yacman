@@ -70,9 +70,23 @@ class TestAliases:
     def test_aliases_removal_all(self, entries, aliases):
         x = yacman.AliasedYacAttMap(entries=entries, aliases=aliases)
         key = list(aliases.keys())[0]
-        assert x.remove_aliases(key=key)
+        removed = x.remove_aliases(key=key)
+        assert isinstance(removed, list)
+        assert len(removed) == 1
         with pytest.raises(yacman.UndefinedAliasError):
             x.get_aliases(key)
+
+    @pytest.mark.parametrize(["entries", "aliases"],
+                             [({"a": "1"}, {"a": ["alias_a", "alias_a1"]}),
+                              ({"b": "1"}, {"b": ["alias_b", "alias_b1"]}),
+                              ({"55": "1"}, {"55": ["alias_55", "alias_551"]})])
+    def test_aliases_removal_specific(self, entries, aliases):
+        x = yacman.AliasedYacAttMap(entries=entries, aliases=aliases)
+        key = list(aliases.keys())[0]
+        alias_to_remove = [aliases[key][0]]
+        removed = x.remove_aliases(key=key, aliases=alias_to_remove)
+        assert isinstance(removed, list)
+        assert removed == alias_to_remove
 
     @pytest.mark.parametrize(["entries", "aliases"],
                              [({"a": "1"}, {"a": ["alias_a"]}),
