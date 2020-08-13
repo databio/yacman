@@ -47,7 +47,8 @@ class TestAliases:
         key = list(aliases.keys())[0]
         alias = aliases[key][0]
         assert x.set_aliases(key=key, aliases=alias)
-        assert not x.set_aliases(key=key + "_new", aliases=alias)
+        set_al, removed_al = x.set_aliases(key=key + "_new", aliases=alias)
+        assert not set_al
         assert x[alias] == x[key]
 
     @pytest.mark.parametrize(["entries", "aliases"],
@@ -58,8 +59,10 @@ class TestAliases:
         x = yacman.AliasedYacAttMap(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key][0]
+
         assert x.set_aliases(key=key, aliases=alias)
-        assert x.set_aliases(key=key + "_new", aliases=alias, overwrite=True)
+        set_al, removed_al = x.set_aliases(key=key + "_new", aliases=alias, overwrite=True)
+        assert len(set_al) > 0
         with pytest.raises(KeyError):
             x[alias]
 
