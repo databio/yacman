@@ -2,14 +2,10 @@ import os
 from collections.abc import Iterable
 import oyaml as yaml
 import logging
-import errno
-import time
-import sys
 import warnings
 
 import attmap
-from ubiquerg import make_lock_path, wait_for_lock, create_file_racefree, \
-    mkabs, is_url, create_lock, remove_lock
+from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock
 
 from .const import *
 
@@ -85,7 +81,6 @@ class YacAttMap(attmap.PathExAttMap):
             if entries:
                 file_contents.update(entries)
             entries = file_contents
-
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
         super(YacAttMap, self).__init__(entries or {})
