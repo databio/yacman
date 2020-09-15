@@ -346,6 +346,7 @@ def select_config(config_filepath=None,
 
     # First priority: given file
     if config_filepath:
+        config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
             return os.path.abspath(config_filepath)
         _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
