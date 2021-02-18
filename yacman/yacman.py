@@ -72,7 +72,7 @@ class YacAttMap(attmap.PathExAttMap):
                 warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
                               " read from the 'filepath'", UserWarning)
         if filepath:
-            if not skip_read_lock and not writable:
+            if not skip_read_lock and not writable and os.path.exists(filepath):
                 create_lock(filepath, wait_max)
                 file_contents = load_yaml(filepath)
                 remove_lock(filepath)
