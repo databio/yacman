@@ -84,23 +84,23 @@ class AliasedYacAttMap(YacAttMap):
             for alias in v:
                 self[ALIASES_KEY][alias] = k
 
-    def __getitem__(self, item, expand=True):
+    def __getitem__(self, item, expand=True, to_dict=False):
         """
         This item accession method will try to access the value by a literal
         key. If the key is not defined in the object it will try to access the
         key by it's alias, if defined. If both fail, a KeyError is raised.
         """
         try:
-            return super(AliasedYacAttMap, self).__getitem__(item=item,
-                                                             expand=expand)
+            return super(AliasedYacAttMap, self).__getitem__(
+                item=item, expand=expand, to_dict=to_dict)
         except KeyError:
             try:
                 key = self.get_key(item)
             except UndefinedAliasError:
                 raise KeyError(item)
             else:
-                return super(AliasedYacAttMap, self).__getitem__(item=key,
-                                                                 expand=expand)
+                return super(AliasedYacAttMap, self).__getitem__(
+                    item=key, expand=expand, to_dict=to_dict)
 
     def __contains__(self, key):
         """
