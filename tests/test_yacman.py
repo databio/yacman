@@ -17,8 +17,9 @@ class TestWriting:
         assert os.path.exists(make_cfg_file_path("writeout.yaml", data_path))
         os.remove(make_cfg_file_path("writeout.yaml", data_path))
 
-    @pytest.mark.parametrize(["name", "entry"], [("updated.yaml", "update"),
-                                                 ("updated1.yaml", "update1")])
+    @pytest.mark.parametrize(
+        ["name", "entry"], [("updated.yaml", "update"), ("updated1.yaml", "update1")]
+    )
     def test_entries_update(self, name, data_path, entry):
         filepath = make_cfg_file_path(name, data_path)
         yacmap = yacman.YacAttMap(entries={})
@@ -26,11 +27,13 @@ class TestWriting:
         yacmap.write(filepath=filepath)
         yacmap.make_readonly()  # need to remove the lock; the next line locks for read
         yacmapin = yacman.YacAttMap(filepath=filepath, writable=False)
-        assert(yacmapin.test == entry)
+        assert yacmapin.test == entry
         os.remove(filepath)
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
-    def test_warn_on_write_when_not_locked(self, name, data_path, cfg_file, locked_cfg_file):
+    def test_warn_on_write_when_not_locked(
+        self, name, data_path, cfg_file, locked_cfg_file
+    ):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         filename = make_cfg_file_path(name, data_path)
         f = os.open(filename, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -182,7 +185,9 @@ class TestContextManager:
         del yacmap1["testattr"]
         yacmap1.make_readonly()
 
-    def test_context_works_with_objects_created_from_entries_with_filepath(self, cfg_file):
+    def test_context_works_with_objects_created_from_entries_with_filepath(
+        self, cfg_file
+    ):
         yacmap = yacman.YacAttMap(entries={})
         setattr(yacmap, yacman.FILEPATH_KEY, cfg_file)
         with yacmap as _:
@@ -206,7 +211,7 @@ one: 1
 def test_float_idx():
     data = yacman.YacAttMap(yamldata=yaml_str)
     # We should be able to access this by string, not by int index.
-    assert(data['2'] == "two")
+    assert data["2"] == "two"
     with pytest.raises(KeyError):
         data[2]
 
@@ -218,7 +223,9 @@ class TestSelectConfig:
     def test_select_config_works_env_vars(self, cfg_file, varname="TEST"):
         os.environ[varname] = cfg_file
         assert isinstance(yacman.select_config(config_env_vars=varname), str)
-        assert yacman.select_config(config_env_vars=varname) == yacman.select_config(config_filepath=cfg_file)
+        assert yacman.select_config(config_env_vars=varname) == yacman.select_config(
+            config_filepath=cfg_file
+        )
         del os.environ[varname]
 
     def test_select_config_returns_default_cfg(self, path="path.yaml"):
@@ -229,7 +236,9 @@ class TestSelectConfig:
         assert yacman.select_config(config_env_vars=varname) is None
         del os.environ[varname]
 
-    def test_select_config_errors_if_no_cfg_found_and_strict_checks_requested(self, varname="TEST"):
+    def test_select_config_errors_if_no_cfg_found_and_strict_checks_requested(
+        self, varname="TEST"
+    ):
         os.environ[varname] = "bogus/path.yaml"
         with pytest.raises(Exception):
             yacman.select_config(config_env_vars=varname, strict_env=True)
