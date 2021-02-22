@@ -26,7 +26,10 @@ _LOGGER = logging.getLogger(__name__)
 # ordered by default.
 def my_construct_mapping(self, node, deep=False):
     data = self.construct_mapping_org(node, deep)
-    return {(str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key] for key in data}
+    return {
+        (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key]
+        for key in data
+    }
 
 
 def my_construct_pairs(self, node, deep=False):
@@ -54,7 +57,16 @@ class YacAttMap(attmap.PathExAttMap):
     of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
     and then updated it with values from the dict.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None, writable=False, wait_max=DEFAULT_WAIT_TIME, skip_read_lock=False):
+
+    def __init__(
+        self,
+        entries=None,
+        filepath=None,
+        yamldata=None,
+        writable=False,
+        wait_max=DEFAULT_WAIT_TIME,
+        skip_read_lock=False,
+    ):
         """
         Object constructor
 
@@ -69,10 +81,13 @@ class YacAttMap(attmap.PathExAttMap):
             if filepath:
                 create_lock(filepath, wait_max)
             else:
-                warnings.warn("Argument 'writable' is disregarded when the object is created with 'entries' rather than"
-                              " read from the 'filepath'", UserWarning)
+                warnings.warn(
+                    "Argument 'writable' is disregarded when the object is created with 'entries' rather than"
+                    " read from the 'filepath'",
+                    UserWarning,
+                )
         if filepath:
-            if not skip_read_lock and not writable:
+            if not skip_read_lock and not writable and os.path.exists(filepath):
                 create_lock(filepath, wait_max)
                 file_contents = load_yaml(filepath)
                 remove_lock(filepath)
@@ -99,8 +114,10 @@ class YacAttMap(attmap.PathExAttMap):
         # Here we want to render the data in a nice way; and we want to indicate
         # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
         # to give you the data without the class name.
-        return self._render(self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
-                            exclude_class_list="YacAttMap")
+        return self._render(
+            self._simplify_keyvalue(self._data_for_repr(), self._new_empty_basic_map),
+            exclude_class_list="YacAttMap",
+        )
 
     def __enter__(self):
         setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY, True))
@@ -149,21 +166,30 @@ class YacAttMap(attmap.PathExAttMap):
         :return str: the path to the created files
         """
         if getattr(self, RO_KEY, False):
-            raise OSError("You can't call write on an object that was created in read-only mode.")
+            raise OSError(
+                "You can't call write on an object that was created in read-only mode."
+            )
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = make_lock_path(filepath)
         if filepath != getattr(self, FILEPATH_KEY, None):
             if os.path.exists(filepath):
                 if not os.path.exists(lock):
-                    warnings.warn("Writing to a non-locked, existing file. Beware of collisions.", UserWarning)
+                    warnings.warn(
+                        "Writing to a non-locked, existing file. Beware of collisions.",
+                        UserWarning,
+                    )
                 else:
-                    raise OSError("The file '{}' is locked by a different process".format(filepath))
+                    raise OSError(
+                        "The file '{}' is locked by a different process".format(
+                            filepath
+                        )
+                    )
             if getattr(self, FILEPATH_KEY, None):
                 self.make_readonly()
             setattr(self, FILEPATH_KEY, filepath)
             create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         setattr(self, RO_KEY, False)
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(self.to_yaml())
         _LOGGER.debug("Wrote to a file: {}".format(os.path.abspath(filepath)))
         return os.path.abspath(filepath)
@@ -205,7 +231,11 @@ class YacAttMap(attmap.PathExAttMap):
         :return YacAttMap: updated object
         """
         if not getattr(self, RO_KEY, True):
-            _LOGGER.info("Object is already writable, path: {}".format(getattr(self, FILEPATH_KEY, None)))
+            _LOGGER.info(
+                "Object is already writable, path: {}".format(
+                    getattr(self, FILEPATH_KEY, None)
+                )
+            )
             return self
         ori_fp = getattr(self, FILEPATH_KEY, None)
         if filepath and ori_fp != filepath:
@@ -221,7 +251,9 @@ class YacAttMap(attmap.PathExAttMap):
             pass
         except Exception as e:
             self._reinit()
-            _LOGGER.info("File '{}' was not read, got an exception: {}".format(filepath, e))
+            _LOGGER.info(
+                "File '{}' was not read, got an exception: {}".format(filepath, e)
+            )
         setattr(self, RO_KEY, False)
         setattr(self, FILEPATH_KEY, filepath)
         _LOGGER.debug("Made object writable")
@@ -260,8 +292,10 @@ def _check_filepath(filepath):
     #     """ check if object is a string or a list of strings """
     #     return bool(obj) and all(isinstance(elem, str) for elem in obj)
     if not isinstance(filepath, str):
-        raise TypeError("No valid filepath provided. It has to be a str, "
-                        "got: {}".format(filepath.__class__.__name__))
+        raise TypeError(
+            "No valid filepath provided. It has to be a str, "
+            "got: {}".format(filepath.__class__.__name__)
+        )
     return filepath
 
 
@@ -275,24 +309,24 @@ def load_yaml(filepath):
         :param str filepath: path to the file to read
         :return dict: read data
         """
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             data = yaml.safe_load(f)
         return data
 
     if is_url(filepath):
         _LOGGER.debug("Got URL: {}".format(filepath))
-        try: #python3
+        try:  # python3
             from urllib.request import urlopen
             from urllib.error import HTTPError
-        except: #python2
-            from urllib2 import urlopen       
+        except:  # python2
+            from urllib2 import urlopen
             from urllib2 import URLError as HTTPError
         try:
             response = urlopen(filepath)
         except HTTPError as e:
             raise e
-        data = response.read()      # a `bytes` object
-        text = data.decode('utf-8')
+        data = response.read()  # a `bytes` object
+        text = data.decode("utf-8")
         return yaml.safe_load(text)
     else:
         return read_yaml_file(filepath)
@@ -308,8 +342,10 @@ def get_first_env_var(ev):
     if isinstance(ev, str):
         ev = [ev]
     elif not isinstance(ev, Iterable):
-        raise TypeError("Env var must be single name or collection of names; "
-                        "got {}".format(type(ev)))
+        raise TypeError(
+            "Env var must be single name or collection of names; "
+            "got {}".format(type(ev))
+        )
     # TODO: we should handle the null (not found) case, as client code is inclined to unpack, and ValueError guard is vague.
     for v in ev:
         try:
@@ -318,12 +354,14 @@ def get_first_env_var(ev):
             pass
 
 
-def select_config(config_filepath=None,
-                  config_env_vars=None,
-                  default_config_filepath=None,
-                  check_exist=True,
-                  on_missing=lambda fp: IOError(fp),
-                  strict_env=False):
+def select_config(
+    config_filepath=None,
+    config_env_vars=None,
+    default_config_filepath=None,
+    check_exist=True,
+    on_missing=lambda fp: IOError(fp),
+    strict_env=False,
+):
     """
     Selects the config file to load.
 
@@ -346,6 +384,7 @@ def select_config(config_filepath=None,
 
     # First priority: given file
     if config_filepath:
+        config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
             return os.path.abspath(config_filepath)
         _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
@@ -367,10 +406,19 @@ def select_config(config_filepath=None,
             _LOGGER.debug("Found config file in {}: {}".format(cfg_env_var, cfg_file))
             selected_filepath = cfg_file
         if selected_filepath is None and cfg_file and strict_env:
-            raise OSError("Environment variable ({}) does not point to any existing file: {}".
-                                    format(", ".join(config_env_vars), cfg_file))
+            raise OSError(
+                "Environment variable ({}) does not point to any existing file: {}".format(
+                    ", ".join(config_env_vars), cfg_file
+                )
+            )
     if selected_filepath is None:
         # Third priority: default filepath
-        _LOGGER.info("Using default config. No config found in env var: {}".format(str(config_env_vars)))
+        _LOGGER.info(
+            "Using default config. No config found in env var: {}".format(
+                str(config_env_vars)
+            )
+        )
         return default_config_filepath
-    return os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
+    return (
+        os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
+    )

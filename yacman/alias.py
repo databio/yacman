@@ -16,10 +16,19 @@ class AliasedYacAttMap(YacAttMap):
     The items in the object can be accessed using the original key or an alias,
     if defined in the aliases Mapping.
     """
-    def __init__(self, entries=None, filepath=None, yamldata=None,
-                 writable=False, wait_max=DEFAULT_WAIT_TIME,
-                 skip_read_lock=False, aliases=None, exact=False,
-                 aliases_strict=None):
+
+    def __init__(
+        self,
+        entries=None,
+        filepath=None,
+        yamldata=None,
+        writable=False,
+        wait_max=DEFAULT_WAIT_TIME,
+        skip_read_lock=False,
+        aliases=None,
+        exact=False,
+        aliases_strict=None,
+    ):
         """
         Object constructor
 
@@ -42,20 +51,27 @@ class AliasedYacAttMap(YacAttMap):
         """
 
         super(AliasedYacAttMap, self).__init__(
-            entries=entries, filepath=filepath, yamldata=yamldata,
-            writable=writable, wait_max=wait_max, skip_read_lock=skip_read_lock
+            entries=entries,
+            filepath=filepath,
+            yamldata=yamldata,
+            writable=writable,
+            wait_max=wait_max,
+            skip_read_lock=skip_read_lock,
         )
 
         setattr(self, ALIASES_KEY_RAW, {})
         if not exact:
-            if isinstance(aliases, Mapping) and is_aliases_mapping_valid(aliases, aliases_strict):
+            if isinstance(aliases, Mapping) and is_aliases_mapping_valid(
+                aliases, aliases_strict
+            ):
                 setattr(self, ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
                 if len(getfullargspec(aliases).args) != 1:
                     _emit_msg(
                         aliases_strict,
-                        "Provided function '{}' must be a one-arg function".
-                            format(aliases.__name__)
+                        "Provided function '{}' must be a one-arg function".format(
+                            aliases.__name__
+                        ),
                     )
                 try:
                     res = aliases(self)
@@ -63,7 +79,8 @@ class AliasedYacAttMap(YacAttMap):
                     _emit_msg(
                         aliases_strict,
                         "Provided function '{}' errored: {}".format(
-                            aliases.__name__, getattr(e, 'message', repr(e)))
+                            aliases.__name__, getattr(e, "message", repr(e))
+                        ),
                     )
                 else:
                     if is_aliases_mapping_valid(res):
@@ -71,8 +88,9 @@ class AliasedYacAttMap(YacAttMap):
                     else:
                         _emit_msg(
                             aliases_strict,
-                            "callable '{}' did not return a Mapping".
-                                format(aliases.__name__)
+                            "callable '{}' did not return a Mapping".format(
+                                aliases.__name__
+                            ),
                         )
             else:
                 _LOGGER.info("No aliases provided")
@@ -84,23 +102,25 @@ class AliasedYacAttMap(YacAttMap):
             for alias in v:
                 self[ALIASES_KEY][alias] = k
 
-    def __getitem__(self, item, expand=True):
+    def __getitem__(self, item, expand=True, to_dict=False):
         """
         This item accession method will try to access the value by a literal
         key. If the key is not defined in the object it will try to access the
         key by it's alias, if defined. If both fail, a KeyError is raised.
         """
         try:
-            return super(AliasedYacAttMap, self).__getitem__(item=item,
-                                                             expand=expand)
+            return super(AliasedYacAttMap, self).__getitem__(
+                item=item, expand=expand, to_dict=to_dict
+            )
         except KeyError:
             try:
                 key = self.get_key(item)
             except UndefinedAliasError:
                 raise KeyError(item)
             else:
-                return super(AliasedYacAttMap, self).__getitem__(item=key,
-                                                                 expand=expand)
+                return super(AliasedYacAttMap, self).__getitem__(
+                    item=key, expand=expand, to_dict=to_dict
+                )
 
     def __contains__(self, key):
         """
@@ -243,8 +263,11 @@ class AliasedYacAttMap(YacAttMap):
         except UndefinedAliasError:
             return removed
         else:
-            existing_aliases = list(set(aliases) & set(current_aliases)) \
-                if aliases else current_aliases
+            existing_aliases = (
+                list(set(aliases) & set(current_aliases))
+                if aliases
+                else current_aliases
+            )
             for alias in existing_aliases:
                 del self[ALIASES_KEY][alias]
                 removed.append(alias)
@@ -262,8 +285,7 @@ def is_aliases_mapping_valid(aliases, strictness=None):
     if isinstance(aliases, Mapping):
         if all([isinstance(v, list) for k, v in aliases.items()]):
             return True
-    _emit_msg(strictness,
-              "Provided aliases mapping is invalid; Mapping[list] required")
+    _emit_msg(strictness, "Provided aliases mapping is invalid; Mapping[list] required")
     return False
 
 
@@ -277,15 +299,17 @@ def _make_list_of_aliases(aliases):
     """
 
     def _raise_alias_class(x):
-        raise AliasError("A string or a list of strings is required, "
-                         "got: {}".format(x.__class__.__name__))
+        raise AliasError(
+            "A string or a list of strings is required, "
+            "got: {}".format(x.__class__.__name__)
+        )
+
     if aliases is None:
         return aliases
     if isinstance(aliases, str):
         aliases = [aliases]
     elif isinstance(aliases, list):
-        assert all([isinstance(x, str) for x in aliases]), \
-            _raise_alias_class(aliases)
+        assert all([isinstance(x, str) for x in aliases]), _raise_alias_class(aliases)
     else:
         _raise_alias_class(aliases)
     return aliases
