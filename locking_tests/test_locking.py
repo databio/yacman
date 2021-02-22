@@ -14,7 +14,7 @@ parser.add_argument("-w", "--wait", help="max wait time", type=int, required=Tru
 args = parser.parse_args()
 yam = YacAttMap(filepath=args.path, wait_max=args.wait)
 with yam as y:
-	sleep(random())
-	y.update({args.id: 1})
+    sleep(random())
+    y.update({args.id: 1})
 
 sys.exit(0)
