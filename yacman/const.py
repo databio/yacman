@@ -2,13 +2,15 @@
 Constant variables for yacman package
 """
 
-FILEPATH_KEY = "_file_path"
-RO_KEY = "_ro"
-USE_LOCKS_KEY = "_locks"
-ORI_STATE_KEY = "_ori_state"
-WAIT_MAX_KEY = "_wait_time"
+FILEPATH_KEY = "__file_path"
+RO_KEY = "__ro"
+USE_LOCKS_KEY = "__locks"
+ORI_STATE_KEY = "__ori_state"
+WAIT_MAX_KEY = "__wait_time"
 ALIASES_KEY = "__aliases"
 ALIASES_KEY_RAW = "__aliases_raw"
+WRITE_VALIDATE_KEY = "__write_validate"
+SCHEMA_KEY = "__schema"
 
 ATTR_KEYS = (
     USE_LOCKS_KEY,
@@ -18,6 +20,8 @@ ATTR_KEYS = (
     WAIT_MAX_KEY,
     ALIASES_KEY,
     ALIASES_KEY_RAW,
+    WRITE_VALIDATE_KEY,
+    SCHEMA_KEY
 )
 
 LOCK_PREFIX = "lock."

@@ -3,9 +3,11 @@ from collections.abc import Iterable
 import oyaml as yaml
 import logging
 import warnings
+from jsonschema import validate as _validate
+from jsonschema.exceptions import ValidationError
 
 import attmap
-from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock
+from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock, expandpath
 
 from .const import *
 
@@ -49,13 +51,17 @@ yaml.SafeLoader.construct_pairs = my_construct_pairs
 
 class YacAttMap(attmap.PathExAttMap):
     """
-    A class that extends AttMap to provide yaml reading and race-free writing in multi-user contexts.
+    A class that extends AttMap to provide yaml reading and race-free
+    writing in multi-user contexts.
 
-    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a python representation of your YAML
-    configuration file, that can do a lot of cool stuff. You can access the hierarchical YAML attributes with dot
-    notation or dict notation. You can read and write YAML config files with easy functions. It also retains memory
-    of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
-    and then updated it with values from the dict.
+    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a
+    Python representation of your YAML configuration file, that can do a lot of cool
+    stuff. You can access the hierarchical YAML attributes with dot notation or dict
+    notation. You can read and write YAML config files with easy functions. It also
+    retains memory of the its source filepath. If both a filepath and an entries
+    dict are provided, it will first load the file and then updated it with
+    values from the dict. Moreover, the config contents can be validated against a
+    jsonschema schema, if a path to one is provided.
     """
 
     def __init__(
@@ -66,24 +72,35 @@ class YacAttMap(attmap.PathExAttMap):
         writable=False,
         wait_max=DEFAULT_WAIT_TIME,
         skip_read_lock=False,
+        schema_source=None,
+        write_validate=False,
     ):
         """
         Object constructor
 
-        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection of key-value pairs.
+        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection
+            of key-value pairs.
         :param str filepath: YAML filepath to the config file.
         :param str yamldata: YAML-formatted string
         :param bool writable: whether to create the object with write capabilities
-        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
-        :param bool skip_read_lock: whether the file should not be locked for reading when object is created in read only mode
+        :param int wait_max: how long to wait for creating an object when the file
+            that data will be read from is locked
+        :param bool skip_read_lock: whether the file should not be locked for reading
+            when object is created in read only mode
+        :param str schema_source: path or a URL to a jsonschema in YAML format to use
+            for optional config validation. If this argument is provided the object
+            is always validated at least once, at the object creation stage.
+        :param bool write_validate: a boolean indicating whether the object should be
+            validated every time the `write` method is executed, which is
+            a way of preventing invalid config writing
         """
         if writable:
             if filepath:
                 create_lock(filepath, wait_max)
             else:
                 warnings.warn(
-                    "Argument 'writable' is disregarded when the object is created with 'entries' rather than"
-                    " read from the 'filepath'",
+                    "Argument 'writable' is disregarded when the object is created "
+                    "with 'entries' rather than read from the 'filepath'",
                     UserWarning,
                 )
         if filepath:
@@ -105,6 +122,20 @@ class YacAttMap(attmap.PathExAttMap):
             setattr(self, WAIT_MAX_KEY, wait_max)
             setattr(self, FILEPATH_KEY, mkabs(filepath))
             setattr(self, RO_KEY, not writable)
+
+        setattr(self, WRITE_VALIDATE_KEY, write_validate)
+        if schema_source is not None:
+            assert isinstance(schema_source, str), TypeError(
+                f"Path to the schema to validate the config must be a string"
+            )
+            sp = expandpath(schema_source)
+            assert os.path.exists(sp), FileNotFoundError(
+                f"Provided schema file does not exist: {schema_source}."
+                f" Also tried: {sp}"
+            )
+            # validate config
+            setattr(self, SCHEMA_KEY, load_yaml(sp))
+            self.validate()
 
     def __del__(self):
         if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
@@ -128,6 +159,7 @@ class YacAttMap(attmap.PathExAttMap):
             return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+
         self.write()
         if getattr(self, ORI_STATE_KEY, False):
             self.make_readonly()
@@ -151,16 +183,35 @@ class YacAttMap(attmap.PathExAttMap):
         """ Most specific type to which an inserted value may be converted """
         return YacAttMap
 
-    def write(self, filepath=None):
+    def validate(self, schema=None):
+        """
+        Validate the object against a schema
+
+        :param dict schema: a schema object to use to validate, it overrides the one
+        that has been provided at object construction stage
+        """
+        try:
+            _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
+        except ValidationError:
+            if getattr(self, FILEPATH_KEY, None) is not None:
+                # need to unlock locked files in case or validation error so that no
+                # locks are left in place
+                self.make_readonly()
+            raise
+
+    def write(self, filepath=None, schema=None):
         """
         Write the contents to a file.
 
         Make sure that the object has been created with write capabilities
 
         :param str filepath: a file path to write to
-        :raise OSError: when the object has been created in a read only mode or other process has locked the file
-        :raise TypeError: when the filepath cannot be determined.
-            This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
+        :param dict schema: a schema object to use to validate, it overrides the one
+            that has been provided at object construction stage
+        :raise OSError: when the object has been created in a read only mode or other
+            process has locked the file
+        :raise TypeError: when the filepath cannot be determined. This takes place only
+            if YacAttMap initialized with a Mapping as an input, not read from file.
         :raise OSError: when the write is called on an object with no write capabilities
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
@@ -169,6 +220,8 @@ class YacAttMap(attmap.PathExAttMap):
             raise OSError(
                 "You can't call write on an object that was created in read-only mode."
             )
+        if schema is not None or getattr(self, WRITE_VALIDATE_KEY):
+            self.validate(schema=schema)
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = make_lock_path(filepath)
         if filepath != getattr(self, FILEPATH_KEY, None):
@@ -199,7 +252,8 @@ class YacAttMap(attmap.PathExAttMap):
         """
         Remove lock
 
-        :param str filepath: path to the file to remove the lock for. Not the path to the lock!
+        :param str filepath: path to the file to remove the lock for. Not the
+            path to the lock!
         :return bool: whether the lock was found and removed
         """
         lock = make_lock_path(_check_filepath(filepath))
@@ -293,8 +347,7 @@ def _check_filepath(filepath):
     #     return bool(obj) and all(isinstance(elem, str) for elem in obj)
     if not isinstance(filepath, str):
         raise TypeError(
-            "No valid filepath provided. It has to be a str, "
-            "got: {}".format(filepath.__class__.__name__)
+            f"No valid filepath provided. It has to be a str, got: {filepath.__class__.__name__}"
         )
     return filepath
 
@@ -314,7 +367,7 @@ def load_yaml(filepath):
         return data
 
     if is_url(filepath):
-        _LOGGER.debug("Got URL: {}".format(filepath))
+        _LOGGER.debug(f"Got URL: {filepath}")
         try:  # python3
             from urllib.request import urlopen
             from urllib.error import HTTPError
@@ -343,10 +396,10 @@ def get_first_env_var(ev):
         ev = [ev]
     elif not isinstance(ev, Iterable):
         raise TypeError(
-            "Env var must be single name or collection of names; "
-            "got {}".format(type(ev))
+            f"Env var must be single name or collection of names; got {type(ev)}"
         )
-    # TODO: we should handle the null (not found) case, as client code is inclined to unpack, and ValueError guard is vague.
+    # TODO: we should handle the null (not found) case, as client code is
+    #  inclined to unpack, and ValueError guard is vague.
     for v in ev:
         try:
             return v, os.environ[v]
@@ -387,7 +440,7 @@ def select_config(
         config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
             return os.path.abspath(config_filepath)
-        _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
+        _LOGGER.error(f"Config file path isn't a file: {config_filepath}")
         result = on_missing(config_filepath)
         if isinstance(result, Exception):
             raise result
@@ -398,25 +451,22 @@ def select_config(
 
     # Second priority: environment variables (in order)
     if config_env_vars:
-        _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
+        _LOGGER.debug(f"Checking for environment variable: {config_env_vars}")
 
         cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
         if not check_exist or os.path.isfile(cfg_file):
-            _LOGGER.debug("Found config file in {}: {}".format(cfg_env_var, cfg_file))
+            _LOGGER.debug(f"Found config file in {cfg_env_var}: {cfg_file}")
             selected_filepath = cfg_file
         if selected_filepath is None and cfg_file and strict_env:
             raise OSError(
-                "Environment variable ({}) does not point to any existing file: {}".format(
-                    ", ".join(config_env_vars), cfg_file
-                )
+                f"Environment variable ({', '.join(config_env_vars)}) does "
+                f"not point to any existing file: {cfg_file}"
             )
     if selected_filepath is None:
         # Third priority: default filepath
         _LOGGER.info(
-            "Using default config. No config found in env var: {}".format(
-                str(config_env_vars)
-            )
+            f"Using default config. No config found in env var: {str(config_env_vars)}"
         )
         return default_config_filepath
     return (
