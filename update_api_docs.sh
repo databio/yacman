@@ -1,2 +1,2 @@
 #!/bin/bash
-lucidoc pipestat -P rst > docs/api_docs.md
+lucidoc yacman -P rst > docs/api_docs.md
