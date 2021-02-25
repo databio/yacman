@@ -2,6 +2,8 @@ import pytest
 import yacman
 import os
 
+from jsonschema.exceptions import ValidationError
+
 
 class TestWriting:
     def test_basic_write(self, cfg_file, list_locks, data_path, locked_cfg_file):
@@ -243,6 +245,44 @@ class TestSelectConfig:
         with pytest.raises(Exception):
             yacman.select_config(config_env_vars=varname, strict_env=True)
         del os.environ[varname]
+
+
+class TestValidation:
+    def test_validation_in_constructor(self, cfg_file, schema):
+        """ test object that adheres to the schema guidelines passes validation """
+        yacman.YacAttMap(filepath=cfg_file, schema_source=schema)
+
+    @pytest.mark.parametrize("value", [1, 2, [1, 2, 3], {"test": 1}])
+    def test_validation_fails_in_constructor(self, schema, value):
+        """
+        test object that does not adhere to the schema
+        guidelines does not pass validation
+        """
+        with pytest.raises(ValidationError):
+            yacman.YacAttMap(entries={"testattr": value}, schema_source=schema)
+
+    def test_validation_in_write(self, cfg_file, schema):
+        """
+        test object that adheres to the schema guidelines passes
+        validation on write
+        """
+        y = yacman.YacAttMap(
+            filepath=cfg_file, schema_source=schema, write_validate=True, writable=True
+        )
+        y.write()
+
+    @pytest.mark.parametrize("value", [1, 2, [1, 2, 3], {"test": 1}])
+    def test_validation_fails_in_write(self, cfg_file, schema, value):
+        """
+        test object that does not adhere to the schema guidelines does not pass
+         validation on write
+        """
+        y = yacman.YacAttMap(
+            filepath=cfg_file, schema_source=schema, write_validate=True, writable=True
+        )
+        y["testattr"] = value
+        with pytest.raises(ValidationError):
+            y.write()
 
 
 def cleanup_locks(lcks):

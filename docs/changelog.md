@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.0] -- unreleased
+### Added
+- jsonschema validation support. The `YacAttMap` contents can be validated when object is constructed and on every call to the `write` method
+
 ## [0.7.1] -- 2021-02-22
 ### Added
 - environment variables expansion in provided paths in `select_config` function 
