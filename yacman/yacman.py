@@ -183,23 +183,28 @@ class YacAttMap(attmap.PathExAttMap):
         """ Most specific type to which an inserted value may be converted """
         return YacAttMap
 
-    def validate(self, schema=None):
+    def validate(self, schema=None, exclude_case=False):
         """
         Validate the object against a schema
 
         :param dict schema: a schema object to use to validate, it overrides the one
-        that has been provided at object construction stage
+            that has been provided at object construction stage
+        :param bool exclude_case: whether to exclude validated objects
+            from the error. Useful when used with large configs
         """
         try:
             _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
-        except ValidationError:
+        except ValidationError as e:
             if getattr(self, FILEPATH_KEY, None) is not None:
-                # need to unlock locked files in case or validation error so that no
+                # need to unlock locked files in case of validation error so that no
                 # locks are left in place
                 self.make_readonly()
-            raise
+            if not exclude_case:
+                raise
+            raise ValidationError(e.message)
+        _LOGGER.debug("Validated successfully")
 
-    def write(self, filepath=None, schema=None):
+    def write(self, filepath=None, schema=None, exclude_case=False):
         """
         Write the contents to a file.
 
@@ -221,7 +226,7 @@ class YacAttMap(attmap.PathExAttMap):
                 "You can't call write on an object that was created in read-only mode."
             )
         if schema is not None or getattr(self, WRITE_VALIDATE_KEY):
-            self.validate(schema=schema)
+            self.validate(schema=schema, exclude_case=exclude_case)
         filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
         lock = make_lock_path(filepath)
         if filepath != getattr(self, FILEPATH_KEY, None):
