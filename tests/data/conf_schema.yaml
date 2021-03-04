@@ -10,21 +10,3 @@ properties:
   anotherattr:
     type: [string, integer]
     description: "string or integer"
-#  database:
-#    type: object
-#    properties:
-#      name:
-#        type: string
-#        description: "DB name"
-#      user:
-#        type: string
-#        description: "DB user"
-#      password:
-#        type: string
-#        description: "DB password"
-#      host:
-#        type: string
-#        description: "DB host"
-#      port:
-#        type: [string, integer]
-#        description: "DB port"
