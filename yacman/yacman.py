@@ -195,13 +195,19 @@ class YacAttMap(attmap.PathExAttMap):
         try:
             _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
         except ValidationError as e:
+            _LOGGER.error(
+                f"{self.__class__.__name__} object did not pass schema validation"
+            )
             if getattr(self, FILEPATH_KEY, None) is not None:
                 # need to unlock locked files in case of validation error so that no
                 # locks are left in place
                 self.make_readonly()
             if not exclude_case:
                 raise
-            raise ValidationError(e.message)
+            raise ValidationError(
+                f"{self.__class__.__name__} object did not pass schema validation: "
+                f"{e.message}"
+            )
         _LOGGER.debug("Validated successfully")
 
     def write(self, filepath=None, schema=None, exclude_case=False):
