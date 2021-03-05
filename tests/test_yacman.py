@@ -4,6 +4,8 @@ import os
 
 from jsonschema.exceptions import ValidationError
 
+from yacman.const import IK, RO_KEY, FILEPATH_KEY
+
 
 class TestWriting:
     def test_basic_write(self, cfg_file, list_locks, data_path, locked_cfg_file):
@@ -85,20 +87,20 @@ class TestManipulationMethods:
     def test_make_writable_makes_object_writable(self, cfg_file):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         yacmap.make_writable()
-        assert not getattr(yacmap, yacman.RO_KEY, True)
+        assert not getattr(yacmap[IK], RO_KEY, True)
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
     def test_make_writable_changes_filepath(self, cfg_file, name, data_path):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         yacmap.make_writable(make_cfg_file_path(name, data_path))
-        assert getattr(yacmap, yacman.FILEPATH_KEY) != cfg_file
+        assert getattr(yacmap[IK], FILEPATH_KEY) != cfg_file
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
     def test_make_writable_sets_filepath(self, name, data_path):
         yacmap = yacman.YacAttMap(entries={})
         yacmap.make_writable(make_cfg_file_path(name, data_path))
         assert os.path.exists(make_lock_path(name, data_path))
-        assert getattr(yacmap, yacman.FILEPATH_KEY) is not None
+        assert getattr(yacmap[IK], FILEPATH_KEY) is not None
 
     @pytest.mark.parametrize("name", ["test.yaml", "test1.yaml"])
     def test_make_writable_creates_locks(self, cfg_file, name, data_path):
@@ -173,14 +175,16 @@ class TestContextManager:
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
         with yacmap as _:
             pass
-        assert yacmap.writable == state
+        is_ro = getattr(yacmap[IK], RO_KEY, None)
+        is_writable = None if is_ro is None else not is_ro
+        assert is_writable == state
 
     @pytest.mark.parametrize("state", [True, False])
     def test_context_manager_saves_updates(self, cfg_file, state):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=state)
         with yacmap as y:
             y.testattr = "testval"
-        if yacmap.writable:
+        if not getattr(yacmap[IK], RO_KEY, True):
             yacmap.make_readonly()
         yacmap1 = yacman.YacAttMap(filepath=cfg_file, writable=True)
         assert yacmap1.testattr == "testval"
@@ -191,7 +195,7 @@ class TestContextManager:
         self, cfg_file
     ):
         yacmap = yacman.YacAttMap(entries={})
-        setattr(yacmap, yacman.FILEPATH_KEY, cfg_file)
+        setattr(yacmap[IK], yacman.FILEPATH_KEY, cfg_file)
         with yacmap as _:
             pass
 

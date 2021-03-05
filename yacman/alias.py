@@ -1,4 +1,4 @@
-from .yacman import YacAttMap
+from .yacman import YacAttMap, _warn_deprecated
 from .const import *
 from .exceptions import *
 from collections.abc import Mapping
@@ -58,13 +58,13 @@ class AliasedYacAttMap(YacAttMap):
             wait_max=wait_max,
             skip_read_lock=skip_read_lock,
         )
-
-        setattr(self, ALIASES_KEY_RAW, {})
+        _LOGGER.info(f"init state: {self}")
+        setattr(self[IK], ALIASES_KEY_RAW, {})
         if not exact:
             if isinstance(aliases, Mapping) and is_aliases_mapping_valid(
                 aliases, aliases_strict
             ):
-                setattr(self, ALIASES_KEY_RAW, aliases)
+                setattr(self[IK], ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
                 if len(getfullargspec(aliases).args) != 1:
                     _emit_msg(
@@ -84,7 +84,7 @@ class AliasedYacAttMap(YacAttMap):
                     )
                 else:
                     if is_aliases_mapping_valid(res):
-                        setattr(self, ALIASES_KEY_RAW, res)
+                        setattr(self[IK], ALIASES_KEY_RAW, res)
                     else:
                         _emit_msg(
                             aliases_strict,
@@ -97,10 +97,10 @@ class AliasedYacAttMap(YacAttMap):
 
         # convert the original, condensed mapping to a data structure with
         # optimal time complexity
-        setattr(self, ALIASES_KEY, {})
-        for k, v in getattr(self, ALIASES_KEY_RAW).items():
+        setattr(self[IK], ALIASES_KEY, {})
+        for k, v in self[IK][ALIASES_KEY_RAW].items():
             for alias in v:
-                self[ALIASES_KEY][alias] = k
+                self[IK][ALIASES_KEY][alias] = k
 
     def __getitem__(self, item, expand=True, to_dict=False):
         """
@@ -167,7 +167,8 @@ class AliasedYacAttMap(YacAttMap):
 
         :return dict: alias-key mapping (one to one)
         """
-        return self[ALIASES_KEY]
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], ALIASES_KEY)
 
     @property
     def _raw_alias_dict(self):
@@ -177,7 +178,8 @@ class AliasedYacAttMap(YacAttMap):
 
         :return dict: key-aliases mapping (one to many)
         """
-        return self[ALIASES_KEY_RAW]
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], ALIASES_KEY_RAW)
 
     def get_aliases(self, key):
         """
@@ -191,7 +193,7 @@ class AliasedYacAttMap(YacAttMap):
             requested key
         """
         aliases = []
-        for a, k in self.alias_dict.items():
+        for a, k in self[IK][ALIASES_KEY].items():
             if k == key:
                 aliases.append(a)
         if aliases:
@@ -209,8 +211,16 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if a no key has been defined for the
             requested alias
         """
-        if alias in self.alias_dict.keys():
-            return self.alias_dict[alias]
+        try:
+            # first try to use the parent method (doesn't try to use aliases) to
+            # check if the __internal key is defined.
+            # Otherwise we would end up in an infinite recursion loop.
+            super(AliasedYacAttMap, self).__getitem__(item=IK, expand=False)
+        except KeyError:
+            # raise UndefinedAliasError, which is caught in the updated __getitem__ method
+            raise UndefinedAliasError()
+        if alias in self[IK][ALIASES_KEY].keys():
+            return self[IK][ALIASES_KEY][alias]
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
     def set_aliases(self, key, aliases, overwrite=False, reset_key=False):
@@ -233,17 +243,17 @@ class AliasedYacAttMap(YacAttMap):
                 pass
             else:
                 for a in current_aliases:
-                    del self[ALIASES_KEY][a]
+                    del self[IK][ALIASES_KEY][a]
                     removed_aliases.append(a)
 
         set_aliases = []
         for alias in _make_list_of_aliases(aliases):
-            if alias in self[ALIASES_KEY]:
+            if alias in self[IK][ALIASES_KEY]:
                 if overwrite:
-                    self[ALIASES_KEY][alias] = key
+                    self[IK][ALIASES_KEY][alias] = key
                     set_aliases.append(alias)
             else:
-                self[ALIASES_KEY][alias] = key
+                self[IK][ALIASES_KEY][alias] = key
                 set_aliases.append(alias)
         _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
         return set_aliases, removed_aliases
@@ -269,7 +279,7 @@ class AliasedYacAttMap(YacAttMap):
                 else current_aliases
             )
             for alias in existing_aliases:
-                del self[ALIASES_KEY][alias]
+                del self[IK][ALIASES_KEY][alias]
                 removed.append(alias)
             return removed
 

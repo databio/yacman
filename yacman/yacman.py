@@ -5,6 +5,8 @@ import logging
 import warnings
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
+from warnings import warn
+from sys import _getframe
 
 import attmap
 from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock, expandpath
@@ -115,15 +117,17 @@ class YacAttMap(attmap.PathExAttMap):
             entries = file_contents
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
+        if not hasattr(self, IK):
+            setattr(self, IK, attmap.AttMap())
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
             # prevents: AttributeError: _OrderedDict__root
-            setattr(self, WAIT_MAX_KEY, wait_max)
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, not writable)
+            setattr(self[IK], WAIT_MAX_KEY, wait_max)
+            setattr(self[IK], FILEPATH_KEY, mkabs(filepath))
+            setattr(self[IK], RO_KEY, not writable)
 
-        setattr(self, WRITE_VALIDATE_KEY, write_validate)
+        setattr(self[IK], WRITE_VALIDATE_KEY, write_validate)
         if schema_source is not None:
             assert isinstance(schema_source, str), TypeError(
                 f"Path to the schema to validate the config must be a string"
@@ -134,11 +138,11 @@ class YacAttMap(attmap.PathExAttMap):
                 f" Also tried: {sp}"
             )
             # validate config
-            setattr(self, SCHEMA_KEY, load_yaml(sp))
+            setattr(self[IK], SCHEMA_KEY, load_yaml(sp))
             self.validate()
 
     def __del__(self):
-        if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
+        if hasattr(self[IK], FILEPATH_KEY) and not getattr(self[IK], RO_KEY, True):
             self.make_readonly()
 
     def __repr__(self):
@@ -151,17 +155,16 @@ class YacAttMap(attmap.PathExAttMap):
         )
 
     def __enter__(self):
-        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY, True))
-        if self.writable:
+        setattr(self[IK], ORI_STATE_KEY, getattr(self[IK], RO_KEY, True))
+        if not getattr(self[IK], RO_KEY, None):
             return self
         else:
             self.make_writable()
             return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-
         self.write()
-        if getattr(self, ORI_STATE_KEY, False):
+        if getattr(self[IK], ORI_STATE_KEY, False):
             self.make_readonly()
 
     def _reinit(self, filepath=None):
@@ -193,12 +196,14 @@ class YacAttMap(attmap.PathExAttMap):
             from the error. Useful when used with large configs
         """
         try:
-            _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
+            _validate(
+                self.to_dict(expand=True), schema or getattr(self[IK], SCHEMA_KEY)
+            )
         except ValidationError as e:
             _LOGGER.error(
                 f"{self.__class__.__name__} object did not pass schema validation"
             )
-            if getattr(self, FILEPATH_KEY, None) is not None:
+            if getattr(self[IK], FILEPATH_KEY, None) is not None:
                 # need to unlock locked files in case of validation error so that no
                 # locks are left in place
                 self.make_readonly()
@@ -227,15 +232,15 @@ class YacAttMap(attmap.PathExAttMap):
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
-        if getattr(self, RO_KEY, False):
+        if getattr(self[IK], RO_KEY, False):
             raise OSError(
                 "You can't call write on an object that was created in read-only mode."
             )
-        if schema is not None or getattr(self, WRITE_VALIDATE_KEY):
+        if schema is not None or getattr(self[IK], WRITE_VALIDATE_KEY):
             self.validate(schema=schema, exclude_case=exclude_case)
-        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        filepath = _check_filepath(filepath or getattr(self[IK], FILEPATH_KEY, None))
         lock = make_lock_path(filepath)
-        if filepath != getattr(self, FILEPATH_KEY, None):
+        if filepath != getattr(self[IK], FILEPATH_KEY, None):
             if os.path.exists(filepath):
                 if not os.path.exists(lock):
                     warnings.warn(
@@ -244,19 +249,18 @@ class YacAttMap(attmap.PathExAttMap):
                     )
                 else:
                     raise OSError(
-                        "The file '{}' is locked by a different process".format(
-                            filepath
-                        )
+                        f"The file '{filepath}' is locked by a different process"
                     )
-            if getattr(self, FILEPATH_KEY, None):
+            if getattr(self[IK], FILEPATH_KEY, None):
                 self.make_readonly()
-            setattr(self, FILEPATH_KEY, filepath)
-            create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
-        setattr(self, RO_KEY, False)
+            setattr(self[IK], FILEPATH_KEY, filepath)
+            create_lock(filepath, getattr(self[IK], WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        setattr(self[IK], RO_KEY, False)
         with open(filepath, "w") as f:
             f.write(self.to_yaml())
-        _LOGGER.debug("Wrote to a file: {}".format(os.path.abspath(filepath)))
-        return os.path.abspath(filepath)
+        abs_path = os.path.abspath(filepath)
+        _LOGGER.debug(f"Wrote to a file: {abs_path}")
+        return os.path.abspath(abs_path)
 
     @staticmethod
     def _remove_lock(filepath):
@@ -279,8 +283,8 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return bool: a logical indicating whether any locks were removed
         """
-        if self._remove_lock(getattr(self, FILEPATH_KEY, None)):
-            setattr(self, RO_KEY, True)
+        if self._remove_lock(getattr(self[IK], FILEPATH_KEY, None)):
+            setattr(self[IK], RO_KEY, True)
             _LOGGER.debug("Made object read-only")
             return True
         return False
@@ -295,20 +299,20 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file that the contents will be written to
         :return YacAttMap: updated object
         """
-        if not getattr(self, RO_KEY, True):
+        if not getattr(self[IK], RO_KEY, True):
             _LOGGER.info(
                 "Object is already writable, path: {}".format(
-                    getattr(self, FILEPATH_KEY, None)
+                    getattr(self[IK], FILEPATH_KEY, None)
                 )
             )
             return self
-        ori_fp = getattr(self, FILEPATH_KEY, None)
+        ori_fp = getattr(self[IK], FILEPATH_KEY, None)
         if filepath and ori_fp != filepath:
             # file path has changed, unlock the previously used file if exists
             if ori_fp:
                 self._remove_lock(ori_fp)
         filepath = _check_filepath(filepath or ori_fp)
-        create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        create_lock(filepath, getattr(self[IK], WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
         except OSError:
@@ -319,8 +323,8 @@ class YacAttMap(attmap.PathExAttMap):
             _LOGGER.info(
                 "File '{}' was not read, got an exception: {}".format(filepath, e)
             )
-        setattr(self, RO_KEY, False)
-        setattr(self, FILEPATH_KEY, filepath)
+        setattr(self[IK], RO_KEY, False)
+        setattr(self[IK], FILEPATH_KEY, filepath)
         _LOGGER.debug("Made object writable")
         return self
 
@@ -331,7 +335,8 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return str | None: path to the file the object will would to
         """
-        return getattr(self, FILEPATH_KEY, None)
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], FILEPATH_KEY, None)
 
     @property
     def writable(self):
@@ -340,8 +345,18 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return bool | None: whether the object is writable now
         """
-        attr = getattr(self, RO_KEY, None)
+        _warn_deprecated(obj=self)
+        attr = getattr(self[IK], RO_KEY, None)
         return attr if attr is None else not attr
+
+
+def _warn_deprecated(obj):
+    fun_name = _getframe().f_back.f_code.co_name
+    warn(
+        f"The '{fun_name}' property is deprecated and will be removed in a future relase."
+        f" Use {obj.__class__.__name__}.{IK}.{fun_name} instead.",
+        UserWarning,
+    )
 
 
 def _check_filepath(filepath):
