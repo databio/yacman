@@ -339,6 +339,16 @@ class YacAttMap(attmap.PathExAttMap):
         return getattr(self[IK], FILEPATH_KEY, None)
 
     @property
+    def _file_path(self):
+        """
+        Return the path to the config file or None if not set
+
+        :return str | None: path to the file the object will would to
+        """
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], FILEPATH_KEY, None)
+
+    @property
     def writable(self):
         """
         Return writability flag or None if not set
