@@ -58,7 +58,6 @@ class AliasedYacAttMap(YacAttMap):
             wait_max=wait_max,
             skip_read_lock=skip_read_lock,
         )
-        _LOGGER.info(f"init state: {self}")
         setattr(self[IK], ALIASES_KEY_RAW, {})
         if not exact:
             if isinstance(aliases, Mapping) and is_aliases_mapping_valid(
