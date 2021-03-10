@@ -2,6 +2,16 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.0] -- 2021-03-10
+### Added
+- jsonschema validation support. The `YacAttMap` contents can be validated when object is constructed and on every call to the `write` method
+- `__internal` key in `YacAttMap` object, which stores a `attamp.AttMap` of meta attributes. `__internal` can be accessed in clients as: `yacman.IK`
+
+## Deprecated
+- use of the following properties, which should be accessed via `__internal` key from now on:
+  - `YacAttMap.file_path`
+  - `YacAttMap.writable`
+
 ## [0.7.1] -- 2021-02-22
 ### Added
 - environment variables expansion in provided paths in `select_config` function 

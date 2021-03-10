@@ -1,0 +1,12 @@
+description: "test yacman config file schema"
+properties:
+  newattr:
+    type: string
+    pattern: "^\\S*$"
+    description: "string with no whitespace"
+  testattr:
+    type: string
+    description: "simply a string"
+  anotherattr:
+    type: [string, integer]
+    description: "string or integer"

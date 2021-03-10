@@ -3,9 +3,13 @@ from collections.abc import Iterable
 import oyaml as yaml
 import logging
 import warnings
+from jsonschema import validate as _validate
+from jsonschema.exceptions import ValidationError
+from warnings import warn
+from sys import _getframe
 
 import attmap
-from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock
+from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock, expandpath
 
 from .const import *
 
@@ -49,13 +53,17 @@ yaml.SafeLoader.construct_pairs = my_construct_pairs
 
 class YacAttMap(attmap.PathExAttMap):
     """
-    A class that extends AttMap to provide yaml reading and race-free writing in multi-user contexts.
+    A class that extends AttMap to provide yaml reading and race-free
+    writing in multi-user contexts.
 
-    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a python representation of your YAML
-    configuration file, that can do a lot of cool stuff. You can access the hierarchical YAML attributes with dot
-    notation or dict notation. You can read and write YAML config files with easy functions. It also retains memory
-    of the its source filepath. If both a filepath and an entries dict are provided, it will first load the file
-    and then updated it with values from the dict.
+    The YacAttMap class is a YAML Configuration Attribute Map. Think of it as a
+    Python representation of your YAML configuration file, that can do a lot of cool
+    stuff. You can access the hierarchical YAML attributes with dot notation or dict
+    notation. You can read and write YAML config files with easy functions. It also
+    retains memory of the its source filepath. If both a filepath and an entries
+    dict are provided, it will first load the file and then updated it with
+    values from the dict. Moreover, the config contents can be validated against a
+    jsonschema schema, if a path to one is provided.
     """
 
     def __init__(
@@ -66,24 +74,35 @@ class YacAttMap(attmap.PathExAttMap):
         writable=False,
         wait_max=DEFAULT_WAIT_TIME,
         skip_read_lock=False,
+        schema_source=None,
+        write_validate=False,
     ):
         """
         Object constructor
 
-        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection of key-value pairs.
+        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection
+            of key-value pairs.
         :param str filepath: YAML filepath to the config file.
         :param str yamldata: YAML-formatted string
         :param bool writable: whether to create the object with write capabilities
-        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
-        :param bool skip_read_lock: whether the file should not be locked for reading when object is created in read only mode
+        :param int wait_max: how long to wait for creating an object when the file
+            that data will be read from is locked
+        :param bool skip_read_lock: whether the file should not be locked for reading
+            when object is created in read only mode
+        :param str schema_source: path or a URL to a jsonschema in YAML format to use
+            for optional config validation. If this argument is provided the object
+            is always validated at least once, at the object creation stage.
+        :param bool write_validate: a boolean indicating whether the object should be
+            validated every time the `write` method is executed, which is
+            a way of preventing invalid config writing
         """
         if writable:
             if filepath:
                 create_lock(filepath, wait_max)
             else:
                 warnings.warn(
-                    "Argument 'writable' is disregarded when the object is created with 'entries' rather than"
-                    " read from the 'filepath'",
+                    "Argument 'writable' is disregarded when the object is created "
+                    "with 'entries' rather than read from the 'filepath'",
                     UserWarning,
                 )
         if filepath:
@@ -98,16 +117,32 @@ class YacAttMap(attmap.PathExAttMap):
             entries = file_contents
         elif yamldata:
             entries = yaml.load(yamldata, yaml.SafeLoader)
+        if not hasattr(self, IK):
+            setattr(self, IK, attmap.AttMap())
         super(YacAttMap, self).__init__(entries or {})
         if filepath:
             # to make this python2 compatible, the attributes need to be set here.
             # prevents: AttributeError: _OrderedDict__root
-            setattr(self, WAIT_MAX_KEY, wait_max)
-            setattr(self, FILEPATH_KEY, mkabs(filepath))
-            setattr(self, RO_KEY, not writable)
+            setattr(self[IK], WAIT_MAX_KEY, wait_max)
+            setattr(self[IK], FILEPATH_KEY, mkabs(filepath))
+            setattr(self[IK], RO_KEY, not writable)
+
+        setattr(self[IK], WRITE_VALIDATE_KEY, write_validate)
+        if schema_source is not None:
+            assert isinstance(schema_source, str), TypeError(
+                f"Path to the schema to validate the config must be a string"
+            )
+            sp = expandpath(schema_source)
+            assert os.path.exists(sp), FileNotFoundError(
+                f"Provided schema file does not exist: {schema_source}."
+                f" Also tried: {sp}"
+            )
+            # validate config
+            setattr(self[IK], SCHEMA_KEY, load_yaml(sp))
+            self.validate()
 
     def __del__(self):
-        if hasattr(self, FILEPATH_KEY) and not getattr(self, RO_KEY, True):
+        if hasattr(self[IK], FILEPATH_KEY) and not getattr(self[IK], RO_KEY, True):
             self.make_readonly()
 
     def __repr__(self):
@@ -120,8 +155,8 @@ class YacAttMap(attmap.PathExAttMap):
         )
 
     def __enter__(self):
-        setattr(self, ORI_STATE_KEY, getattr(self, RO_KEY, True))
-        if self.writable:
+        setattr(self[IK], ORI_STATE_KEY, getattr(self[IK], RO_KEY, True))
+        if not getattr(self[IK], RO_KEY, None):
             return self
         else:
             self.make_writable()
@@ -129,7 +164,7 @@ class YacAttMap(attmap.PathExAttMap):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.write()
-        if getattr(self, ORI_STATE_KEY, False):
+        if getattr(self[IK], ORI_STATE_KEY, False):
             self.make_readonly()
 
     def _reinit(self, filepath=None):
@@ -151,27 +186,61 @@ class YacAttMap(attmap.PathExAttMap):
         """ Most specific type to which an inserted value may be converted """
         return YacAttMap
 
-    def write(self, filepath=None):
+    def validate(self, schema=None, exclude_case=False):
+        """
+        Validate the object against a schema
+
+        :param dict schema: a schema object to use to validate, it overrides the one
+            that has been provided at object construction stage
+        :param bool exclude_case: whether to exclude validated objects
+            from the error. Useful when used with large configs
+        """
+        try:
+            _validate(
+                self.to_dict(expand=True), schema or getattr(self[IK], SCHEMA_KEY)
+            )
+        except ValidationError as e:
+            _LOGGER.error(
+                f"{self.__class__.__name__} object did not pass schema validation"
+            )
+            if getattr(self[IK], FILEPATH_KEY, None) is not None:
+                # need to unlock locked files in case of validation error so that no
+                # locks are left in place
+                self.make_readonly()
+            if not exclude_case:
+                raise
+            raise ValidationError(
+                f"{self.__class__.__name__} object did not pass schema validation: "
+                f"{e.message}"
+            )
+        _LOGGER.debug("Validated successfully")
+
+    def write(self, filepath=None, schema=None, exclude_case=False):
         """
         Write the contents to a file.
 
         Make sure that the object has been created with write capabilities
 
         :param str filepath: a file path to write to
-        :raise OSError: when the object has been created in a read only mode or other process has locked the file
-        :raise TypeError: when the filepath cannot be determined.
-            This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
+        :param dict schema: a schema object to use to validate, it overrides the one
+            that has been provided at object construction stage
+        :raise OSError: when the object has been created in a read only mode or other
+            process has locked the file
+        :raise TypeError: when the filepath cannot be determined. This takes place only
+            if YacAttMap initialized with a Mapping as an input, not read from file.
         :raise OSError: when the write is called on an object with no write capabilities
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
-        if getattr(self, RO_KEY, False):
+        if getattr(self[IK], RO_KEY, False):
             raise OSError(
                 "You can't call write on an object that was created in read-only mode."
             )
-        filepath = _check_filepath(filepath or getattr(self, FILEPATH_KEY, None))
+        if schema is not None or getattr(self[IK], WRITE_VALIDATE_KEY):
+            self.validate(schema=schema, exclude_case=exclude_case)
+        filepath = _check_filepath(filepath or getattr(self[IK], FILEPATH_KEY, None))
         lock = make_lock_path(filepath)
-        if filepath != getattr(self, FILEPATH_KEY, None):
+        if filepath != getattr(self[IK], FILEPATH_KEY, None):
             if os.path.exists(filepath):
                 if not os.path.exists(lock):
                     warnings.warn(
@@ -180,26 +249,26 @@ class YacAttMap(attmap.PathExAttMap):
                     )
                 else:
                     raise OSError(
-                        "The file '{}' is locked by a different process".format(
-                            filepath
-                        )
+                        f"The file '{filepath}' is locked by a different process"
                     )
-            if getattr(self, FILEPATH_KEY, None):
+            if getattr(self[IK], FILEPATH_KEY, None):
                 self.make_readonly()
-            setattr(self, FILEPATH_KEY, filepath)
-            create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
-        setattr(self, RO_KEY, False)
+            setattr(self[IK], FILEPATH_KEY, filepath)
+            create_lock(filepath, getattr(self[IK], WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        setattr(self[IK], RO_KEY, False)
         with open(filepath, "w") as f:
             f.write(self.to_yaml())
-        _LOGGER.debug("Wrote to a file: {}".format(os.path.abspath(filepath)))
-        return os.path.abspath(filepath)
+        abs_path = os.path.abspath(filepath)
+        _LOGGER.debug(f"Wrote to a file: {abs_path}")
+        return os.path.abspath(abs_path)
 
     @staticmethod
     def _remove_lock(filepath):
         """
         Remove lock
 
-        :param str filepath: path to the file to remove the lock for. Not the path to the lock!
+        :param str filepath: path to the file to remove the lock for. Not the
+            path to the lock!
         :return bool: whether the lock was found and removed
         """
         lock = make_lock_path(_check_filepath(filepath))
@@ -214,8 +283,8 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return bool: a logical indicating whether any locks were removed
         """
-        if self._remove_lock(getattr(self, FILEPATH_KEY, None)):
-            setattr(self, RO_KEY, True)
+        if self._remove_lock(getattr(self[IK], FILEPATH_KEY, None)):
+            setattr(self[IK], RO_KEY, True)
             _LOGGER.debug("Made object read-only")
             return True
         return False
@@ -230,20 +299,20 @@ class YacAttMap(attmap.PathExAttMap):
         :param str filepath: path to the file that the contents will be written to
         :return YacAttMap: updated object
         """
-        if not getattr(self, RO_KEY, True):
+        if not getattr(self[IK], RO_KEY, True):
             _LOGGER.info(
                 "Object is already writable, path: {}".format(
-                    getattr(self, FILEPATH_KEY, None)
+                    getattr(self[IK], FILEPATH_KEY, None)
                 )
             )
             return self
-        ori_fp = getattr(self, FILEPATH_KEY, None)
+        ori_fp = getattr(self[IK], FILEPATH_KEY, None)
         if filepath and ori_fp != filepath:
             # file path has changed, unlock the previously used file if exists
             if ori_fp:
                 self._remove_lock(ori_fp)
         filepath = _check_filepath(filepath or ori_fp)
-        create_lock(filepath, getattr(self, WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
+        create_lock(filepath, getattr(self[IK], WAIT_MAX_KEY, DEFAULT_WAIT_TIME))
         try:
             self._reinit(filepath)
         except OSError:
@@ -254,8 +323,8 @@ class YacAttMap(attmap.PathExAttMap):
             _LOGGER.info(
                 "File '{}' was not read, got an exception: {}".format(filepath, e)
             )
-        setattr(self, RO_KEY, False)
-        setattr(self, FILEPATH_KEY, filepath)
+        setattr(self[IK], RO_KEY, False)
+        setattr(self[IK], FILEPATH_KEY, filepath)
         _LOGGER.debug("Made object writable")
         return self
 
@@ -266,7 +335,18 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return str | None: path to the file the object will would to
         """
-        return getattr(self, FILEPATH_KEY, None)
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], FILEPATH_KEY, None)
+
+    @property
+    def _file_path(self):
+        """
+        Return the path to the config file or None if not set
+
+        :return str | None: path to the file the object will would to
+        """
+        _warn_deprecated(obj=self)
+        return getattr(self[IK], FILEPATH_KEY, None)
 
     @property
     def writable(self):
@@ -275,8 +355,18 @@ class YacAttMap(attmap.PathExAttMap):
 
         :return bool | None: whether the object is writable now
         """
-        attr = getattr(self, RO_KEY, None)
+        _warn_deprecated(obj=self)
+        attr = getattr(self[IK], RO_KEY, None)
         return attr if attr is None else not attr
+
+
+def _warn_deprecated(obj):
+    fun_name = _getframe().f_back.f_code.co_name
+    warn(
+        f"The '{fun_name}' property is deprecated and will be removed in a future relase."
+        f" Use {obj.__class__.__name__}.{IK}.{fun_name} instead.",
+        UserWarning,
+    )
 
 
 def _check_filepath(filepath):
@@ -293,8 +383,7 @@ def _check_filepath(filepath):
     #     return bool(obj) and all(isinstance(elem, str) for elem in obj)
     if not isinstance(filepath, str):
         raise TypeError(
-            "No valid filepath provided. It has to be a str, "
-            "got: {}".format(filepath.__class__.__name__)
+            f"No valid filepath provided. It has to be a str, got: {filepath.__class__.__name__}"
         )
     return filepath
 
@@ -314,7 +403,7 @@ def load_yaml(filepath):
         return data
 
     if is_url(filepath):
-        _LOGGER.debug("Got URL: {}".format(filepath))
+        _LOGGER.debug(f"Got URL: {filepath}")
         try:  # python3
             from urllib.request import urlopen
             from urllib.error import HTTPError
@@ -343,10 +432,10 @@ def get_first_env_var(ev):
         ev = [ev]
     elif not isinstance(ev, Iterable):
         raise TypeError(
-            "Env var must be single name or collection of names; "
-            "got {}".format(type(ev))
+            f"Env var must be single name or collection of names; got {type(ev)}"
         )
-    # TODO: we should handle the null (not found) case, as client code is inclined to unpack, and ValueError guard is vague.
+    # TODO: we should handle the null (not found) case, as client code is
+    #  inclined to unpack, and ValueError guard is vague.
     for v in ev:
         try:
             return v, os.environ[v]
@@ -387,7 +476,7 @@ def select_config(
         config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
             return os.path.abspath(config_filepath)
-        _LOGGER.error("Config file path isn't a file: {}".format(config_filepath))
+        _LOGGER.error(f"Config file path isn't a file: {config_filepath}")
         result = on_missing(config_filepath)
         if isinstance(result, Exception):
             raise result
@@ -398,25 +487,22 @@ def select_config(
 
     # Second priority: environment variables (in order)
     if config_env_vars:
-        _LOGGER.debug("Checking for environment variable: {}".format(config_env_vars))
+        _LOGGER.debug(f"Checking for environment variable: {config_env_vars}")
 
         cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
         if not check_exist or os.path.isfile(cfg_file):
-            _LOGGER.debug("Found config file in {}: {}".format(cfg_env_var, cfg_file))
+            _LOGGER.debug(f"Found config file in {cfg_env_var}: {cfg_file}")
             selected_filepath = cfg_file
         if selected_filepath is None and cfg_file and strict_env:
             raise OSError(
-                "Environment variable ({}) does not point to any existing file: {}".format(
-                    ", ".join(config_env_vars), cfg_file
-                )
+                f"Environment variable ({', '.join(config_env_vars)}) does "
+                f"not point to any existing file: {cfg_file}"
             )
     if selected_filepath is None:
         # Third priority: default filepath
         _LOGGER.info(
-            "Using default config. No config found in env var: {}".format(
-                str(config_env_vars)
-            )
+            f"Using default config. No config found in env var: {str(config_env_vars)}"
         )
         return default_config_filepath
     return (
