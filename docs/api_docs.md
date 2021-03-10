@@ -228,7 +228,7 @@ Alias is is not defined.
 
 
 ## <a name="ValidationError"></a> Class `ValidationError`
-Common base class for all non-exit exceptions.
+An instance was invalid under a provided schema.
 
 
 ```python
@@ -547,7 +547,7 @@ Remove lock
 
 
 ```python
-def select_config(config_filepath=None, config_env_vars=None, default_config_filepath=None, check_exist=True, on_missing=<function <lambda> at 0x7f8708e6a400>, strict_env=False)
+def select_config(config_filepath=None, config_env_vars=None, default_config_filepath=None, check_exist=True, on_missing=<function <lambda> at 0x7fd91a43f730>, strict_env=False)
 ```
 
 Selects the config file to load.
