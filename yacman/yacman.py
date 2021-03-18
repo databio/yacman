@@ -15,7 +15,6 @@ from .const import *
 
 _LOGGER = logging.getLogger(__name__)
 
-
 # Hack for string indexes of both ordered and unordered yaml representations
 # Credit: Anthon
 # https://stackoverflow.com/questions/50045617
@@ -362,12 +361,12 @@ class YacAttMap(attmap.PathExAttMap):
 
 def _warn_deprecated(obj):
     fun_name = _getframe().f_back.f_code.co_name
-    warn(
-        f"The '{fun_name}' property is deprecated and will be removed in a future relase."
-        f" Use {obj.__class__.__name__}.{IK}.{fun_name} instead.",
+    warnings.warn(
+        f"The '{fun_name}' property is deprecated and will be removed in a future release."
+        f" Use {obj.__class__.__name__}[{IK}][{fun_name}] instead.",
         UserWarning,
+        stacklevel=4
     )
-
 
 def _check_filepath(filepath):
     """
