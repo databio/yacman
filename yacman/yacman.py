@@ -363,7 +363,7 @@ def _warn_deprecated(obj):
     fun_name = _getframe().f_back.f_code.co_name
     warnings.warn(
         f"The '{fun_name}' property is deprecated and will be removed in a future release."
-        f" Use {obj.__class__.__name__}[{IK}][{fun_name}] instead.",
+        f" Use {obj.__class__.__name__}[\"{IK}\"][{fun_name}] instead.",
         UserWarning,
         stacklevel=4,
     )
