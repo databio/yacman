@@ -365,8 +365,9 @@ def _warn_deprecated(obj):
         f"The '{fun_name}' property is deprecated and will be removed in a future release."
         f" Use {obj.__class__.__name__}[{IK}][{fun_name}] instead.",
         UserWarning,
-        stacklevel=4
+        stacklevel=4,
     )
+
 
 def _check_filepath(filepath):
     """
