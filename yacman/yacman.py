@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 # it's compatible with both yaml and oyaml, which is the orderedDict version.
 # this will go away in python 3.7, because the dict representations will be
 # ordered by default.
-
+import sys
 if sys.version_info < (3, 7):
 
     def my_construct_mapping(self, node, deep=False):
