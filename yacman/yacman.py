@@ -27,26 +27,29 @@ _LOGGER = logging.getLogger(__name__)
 # it's compatible with both yaml and oyaml, which is the orderedDict version.
 # this will go away in python 3.7, because the dict representations will be
 # ordered by default.
-def my_construct_mapping(self, node, deep=False):
-    data = self.construct_mapping_org(node, deep)
-    return {
-        (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key]
-        for key in data
-    }
+
+if sys.version_info < (3, 7):
+
+    def my_construct_mapping(self, node, deep=False):
+        data = self.construct_mapping_org(node, deep)
+        return {
+            (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key]
+            for key in data
+        }
 
 
-def my_construct_pairs(self, node, deep=False):
-    pairs = []
-    for key_node, value_node in node.value:
-        key = str(self.construct_object(key_node, deep=deep))
-        value = self.construct_object(value_node, deep=deep)
-        pairs.append((key, value))
-    return pairs
+    def my_construct_pairs(self, node, deep=False):
+        pairs = []
+        for key_node, value_node in node.value:
+            key = str(self.construct_object(key_node, deep=deep))
+            value = self.construct_object(value_node, deep=deep)
+            pairs.append((key, value))
+        return pairs
 
 
-yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
-yaml.SafeLoader.construct_mapping = my_construct_mapping
-yaml.SafeLoader.construct_pairs = my_construct_pairs
+    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
+    yaml.SafeLoader.construct_mapping = my_construct_mapping
+    yaml.SafeLoader.construct_pairs = my_construct_pairs
 # End hack
 
 
