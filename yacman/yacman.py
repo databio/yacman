@@ -28,15 +28,17 @@ _LOGGER = logging.getLogger(__name__)
 # this will go away in python 3.7, because the dict representations will be
 # ordered by default.
 import sys
+
 if sys.version_info < (3, 7):
 
     def my_construct_mapping(self, node, deep=False):
         data = self.construct_mapping_org(node, deep)
         return {
-            (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[key]
+            (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[
+                key
+            ]
             for key in data
         }
-
 
     def my_construct_pairs(self, node, deep=False):
         pairs = []
@@ -45,7 +47,6 @@ if sys.version_info < (3, 7):
             value = self.construct_object(value_node, deep=deep)
             pairs.append((key, value))
         return pairs
-
 
     yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
     yaml.SafeLoader.construct_mapping = my_construct_mapping
