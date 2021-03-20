@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 # ordered by default.
 
 # Only do once?
-if not yaml.SafeLoader.patched:
+if hasattr(yaml, "Safeloader") and "patched" in yaml.Safeloader and not yaml.SafeLoader.patched:
 
     def my_construct_mapping(self, node, deep=False):
         data = self.construct_mapping_org(node, deep)
