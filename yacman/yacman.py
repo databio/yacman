@@ -27,9 +27,9 @@ _LOGGER = logging.getLogger(__name__)
 # it's compatible with both yaml and oyaml, which is the orderedDict version.
 # this will go away in python 3.7, because the dict representations will be
 # ordered by default.
-import sys
 
-if sys.version_info < (3, 7):
+# Only do once?
+if not yaml.SafeLoader.patched:
 
     def my_construct_mapping(self, node, deep=False):
         data = self.construct_mapping_org(node, deep)
@@ -40,6 +40,14 @@ if sys.version_info < (3, 7):
             for key in data
         }
 
+    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
+    yaml.SafeLoader.construct_mapping = my_construct_mapping
+    yaml.SafeLoader.patched = True
+
+import sys
+
+if sys.version_info < (3, 7):
+
     def my_construct_pairs(self, node, deep=False):
         pairs = []
         for key_node, value_node in node.value:
@@ -48,8 +56,6 @@ if sys.version_info < (3, 7):
             pairs.append((key, value))
         return pairs
 
-    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
-    yaml.SafeLoader.construct_mapping = my_construct_mapping
     yaml.SafeLoader.construct_pairs = my_construct_pairs
 # End hack
 
