@@ -29,7 +29,9 @@ _LOGGER = logging.getLogger(__name__)
 # ordered by default.
 
 # Only do once?
-if not "patched_yaml_loader" in locals():
+if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
+
+    _LOGGER.debug("Patching yaml loader")
 
     def my_construct_mapping(self, node, deep=False):
         data = self.construct_mapping_org(node, deep)
@@ -42,7 +44,7 @@ if not "patched_yaml_loader" in locals():
 
     yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
     yaml.SafeLoader.construct_mapping = my_construct_mapping
-    patched_yaml_loader = True
+    yaml.SafeLoader.patched_yaml_loader = True
 
 
 import sys
