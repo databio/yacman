@@ -124,10 +124,10 @@ class YacAttMap(attmap.PathExAttMap):
                 remove_lock(filepath)
             else:
                 file_contents = load_yaml(filepath)
+            if entries:
                 if file_contents is None:
                     # if file is empty, initialize its contents to an empty dict
                     file_contents = {}
-            if entries:
                 file_contents.update(entries)
             entries = file_contents
         elif yamldata:
