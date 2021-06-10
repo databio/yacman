@@ -1,15 +1,15 @@
-import os
-from collections.abc import Iterable
-import oyaml as yaml
 import logging
+import os
 import warnings
-from jsonschema import validate as _validate
-from jsonschema.exceptions import ValidationError
-from warnings import warn
+from collections.abc import Iterable
 from sys import _getframe
+from warnings import warn
 
 import attmap
-from ubiquerg import make_lock_path, mkabs, is_url, create_lock, remove_lock, expandpath
+import oyaml as yaml
+from jsonschema import validate as _validate
+from jsonschema.exceptions import ValidationError
+from ubiquerg import create_lock, expandpath, is_url, make_lock_path, mkabs, remove_lock
 
 from .const import *
 
@@ -421,11 +421,11 @@ def load_yaml(filepath):
     if is_url(filepath):
         _LOGGER.debug(f"Got URL: {filepath}")
         try:  # python3
-            from urllib.request import urlopen
             from urllib.error import HTTPError
+            from urllib.request import urlopen
         except:  # python2
-            from urllib2 import urlopen
             from urllib2 import URLError as HTTPError
+            from urllib2 import urlopen
         try:
             response = urlopen(filepath)
         except HTTPError as e:

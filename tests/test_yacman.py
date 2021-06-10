@@ -1,10 +1,10 @@
-import pytest
-import yacman
 import os
 
+import pytest
 from jsonschema.exceptions import ValidationError
 
-from yacman.const import IK, RO_KEY, FILEPATH_KEY
+import yacman
+from yacman.const import FILEPATH_KEY, IK, RO_KEY
 
 
 class TestWriting:
@@ -200,7 +200,7 @@ class TestContextManager:
             pass
 
     def test_context_errors_with_objects_created_from_entries(self, cfg_file):
-        """ Test for TypeError raised in case no valid filepath is set but write requested """
+        """Test for TypeError raised in case no valid filepath is set but write requested"""
         yacmap = yacman.YacAttMap(entries={})
         with pytest.raises(TypeError):
             with yacmap as _:
@@ -253,7 +253,7 @@ class TestSelectConfig:
 
 class TestValidation:
     def test_validation_in_constructor(self, cfg_file, schema):
-        """ test object that adheres to the schema guidelines passes validation """
+        """test object that adheres to the schema guidelines passes validation"""
         yacman.YacAttMap(filepath=cfg_file, schema_source=schema)
 
     @pytest.mark.parametrize("value", [1, 2, [1, 2, 3], {"test": 1}])

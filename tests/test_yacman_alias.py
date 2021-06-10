@@ -1,4 +1,5 @@
 import pytest
+
 import yacman
 from yacman.exceptions import AliasError
 
