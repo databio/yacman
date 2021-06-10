@@ -124,6 +124,9 @@ class YacAttMap(attmap.PathExAttMap):
                 remove_lock(filepath)
             else:
                 file_contents = load_yaml(filepath)
+                if file_contents is None:
+                    # if file is empty, initialize its contents to an empty dict
+                    file_contents = {}
             if entries:
                 file_contents.update(entries)
             entries = file_contents
@@ -195,7 +198,7 @@ class YacAttMap(attmap.PathExAttMap):
 
     @property
     def _lower_type_bound(self):
-        """ Most specific type to which an inserted value may be converted """
+        """Most specific type to which an inserted value may be converted"""
         return YacAttMap
 
     def validate(self, schema=None, exclude_case=False):
@@ -402,7 +405,7 @@ def _check_filepath(filepath):
 
 
 def load_yaml(filepath):
-    """ Load a yaml file into a python dict """
+    """Load a yaml file into a python dict"""
 
     def read_yaml_file(filepath):
         """
