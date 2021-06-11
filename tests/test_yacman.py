@@ -168,6 +168,14 @@ class TestReading:
         y = yacman.YacAttMap(entries={a: v}, filepath=cfg_file)
         assert y[a] == v
 
+    def test_init_with_empty_file(self, data_path):
+        a, v = "testattr", "testval"
+        empty_file_path = os.path.join(data_path, "empty_file.yaml")
+        open(empty_file_path, "a").close()
+        y = yacman.YacAttMap(entries={a: v}, filepath=empty_file_path)
+        assert a in y
+        os.remove(empty_file_path)
+
 
 class TestContextManager:
     @pytest.mark.parametrize("state", [True, False])
