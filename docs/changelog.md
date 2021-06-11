@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.2] -- unreleased
+## Fixed
+- if file is empty, initialize its contents to an empty dict, which prevents failure
+- check for previously applied path to `yaml.SafeLoader` before patching
+
 ## [0.8.1] -- 2021-03-18
 ## Fixed
 - Clarified message for `__internal` key.
