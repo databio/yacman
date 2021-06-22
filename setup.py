@@ -43,16 +43,16 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
     url="https://github.com/databio/yacman",
-    author="Nathan Sheffield",
+    author=u"Nathan Sheffield, Michal Stolarczyk",
     author_email="nathan@code.databio.org",
     **extra
 )
