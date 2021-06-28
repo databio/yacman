@@ -2,16 +2,16 @@ name: Test locking parallel
 
 on:
   push:
-    branches: [master, dev]
+    branches: [master]
   pull_request:
-    branches: [master, dev]
+    branches: [master]
 
 jobs:
   locking_tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.9]
         proc: [10, 50, 100]
         wait: [10, 40]
     steps:
@@ -31,4 +31,4 @@ jobs:
     - name: Run locking tests (processes=${{ matrix.proc }}, max wait time=${{ matrix.wait }})
       run: |
         cd locking_tests
-        ./test_locking.sh ${{ matrix.proc }} ${{ matrix.wait }}
+        ./run_locking_tests.sh ${{ matrix.proc }} ${{ matrix.wait }}

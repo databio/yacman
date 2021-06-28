@@ -15,7 +15,7 @@ touch test.yaml
 for (( i=1; i<=$1; i++ ))
 do
 	echo "submitting: $i"
-	./test_locking.py --id $i --path test.yaml --wait $2&
+	./locking_tests.py --id $i --path test.yaml --wait $2&
 	pids[${i}]=$!
 done
 

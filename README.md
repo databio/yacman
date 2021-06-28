@@ -5,6 +5,6 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/yacman/badges/version.svg)](https://anaconda.org/conda-forge/yacman)
 
-Yacman is a YAML configuration manager. It provides some convenience tools for dealing with YAML configuration files. 
+Yacman is a YAML configuration manager. It provides some convenience tools for dealing with YAML configuration files.
 
-Please see [this](docs/usage.md) Python notebook for features and usage instructions and [this](docs/api_docs.md) document for API documentation. 
+Please see [this](docs/usage.md) Python notebook for features and usage instructions and [this](docs/api_docs.md) document for API documentation.

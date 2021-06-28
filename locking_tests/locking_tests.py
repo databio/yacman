@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from yacman import YacAttMap
-from argparse import ArgumentParser
-from time import sleep
-from random import random
 import sys
+from argparse import ArgumentParser
+from random import random
+from time import sleep
+
+from yacman import YacAttMap
 
 parser = ArgumentParser(description="Test script")
 
