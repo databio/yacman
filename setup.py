@@ -17,10 +17,6 @@ with open("requirements/requirements-all.txt", "r") as reqs_file:
 extra = {}
 extra["install_requires"] = DEPENDENCIES
 
-# 2to3
-if sys.version_info >= (3,):
-    extra["use_2to3"] = True
-
 with open("yacman/_version.py", "r") as versionfile:
     version = versionfile.readline().split()[-1].strip("\"'\n")
 
