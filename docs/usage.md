@@ -19,7 +19,7 @@ filepath = "test.yaml"
 
 with open(filepath, 'w') as f:
     data = yaml.dump(yaml_dict, f)
-    
+
 import yacman
 ```
 
@@ -42,7 +42,7 @@ yacmap
     lvl1:
       lvl2:
         lvl3:
-          entry: 
+          entry:
            - val1
            - val2
 
@@ -63,7 +63,7 @@ yacmap
     lvl1:
       lvl2:
         lvl3:
-          entry: 
+          entry:
            - val1
            - val2
 
@@ -84,7 +84,7 @@ yacmap
     lvl1:
       lvl2:
         lvl3:
-          entry: 
+          entry:
            - val1
            - val2
 
@@ -185,7 +185,7 @@ yacmap1
     lvl1:
       lvl2:
         lvl3:
-          entry: 
+          entry:
            - val1
            - val2
     test: test
@@ -208,7 +208,7 @@ In any case, the resulting aliases mapping has to follow the format presented be
 
 ```python
 aliases = {
-    "key_1": ["first_key", "key_one"], 
+    "key_1": ["first_key", "key_one"],
     "key_2": ["second_key", "key_two", "fav_key"],
     "key_3": ["third_key", "key_three"]
 }
@@ -271,7 +271,7 @@ entries={
 
 
 ```python
-aliased_yacmap = yacman.AliasedYacAttMap(entries=entries, 
+aliased_yacmap = yacman.AliasedYacAttMap(entries=entries,
                                          aliases=lambda x: {k: v.__getitem__("aliases", expand=False) for k, v in x.items()})
 print(aliased_yacmap)
 ```
@@ -279,15 +279,15 @@ print(aliased_yacmap)
     AliasedYacAttMap
     key_1:
       value: val_1
-      aliases: 
+      aliases:
        - first_key
     key_2:
       value: val_2
-      aliases: 
+      aliases:
        - second_key
     key_3:
       value: val_3
-      aliases: 
+      aliases:
        - third_key
 
 
@@ -339,7 +339,7 @@ AttMap(yacman.load_yaml(schema_path))
         type: string
         description: simply a string
       anotherattr:
-        type: 
+        type:
          - string
          - integer
         description: string or integer
@@ -382,13 +382,13 @@ yacmap = yacman.YacAttMap(entries=entries, schema_source=schema_path)
     <ipython-input-19-d687b0549d77> in <module>
           1 entries.update({"testattr": 1})
     ----> 2 yacmap = yacman.YacAttMap(entries=entries, schema_source=schema_path)
-    
+
 
     /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/yacman/yacman.py in __init__(self, entries, filepath, yamldata, writable, wait_max, skip_read_lock, schema_source, write_validate)
         136             # validate config
         137             setattr(self, SCHEMA_KEY, load_yaml(sp))
     --> 138             self.validate()
-        139 
+        139
         140     def __del__(self):
 
 
@@ -404,15 +404,15 @@ yacmap = yacman.YacAttMap(entries=entries, schema_source=schema_path)
         897     error = exceptions.best_match(validator.iter_errors(instance))
         898     if error is not None:
     --> 899         raise error
-        900 
-        901 
+        900
+        901
 
 
     ValidationError: 1 is not of type 'string'
-    
+
     Failed validating 'type' in schema['properties']['testattr']:
         {'description': 'simply a string', 'type': 'string'}
-    
+
     On instance['testattr']:
         1
 
@@ -457,7 +457,7 @@ yacmap.write(exclude_case=True)
           1 yacmap = yacman.YacAttMap(filepath=filepath, schema_source=schema_path, writable=True, write_validate=True)
           2 yacmap["newattr"] = 1
     ----> 3 yacmap.write(exclude_case=True)
-    
+
 
     /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/yacman/yacman.py in write(self, filepath, schema, exclude_case)
         233             )
@@ -502,14 +502,14 @@ with yacmap as y:
     ValidationError                           Traceback (most recent call last)
 
     <ipython-input-23-9e72f3657d91> in <module>
-          2 
+          2
           3 with yacmap as y:
     ----> 4     y['newattr'] = 1
-    
+
 
     /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/yacman/yacman.py in __exit__(self, exc_type, exc_val, exc_tb)
         161     def __exit__(self, exc_type, exc_val, exc_tb):
-        162 
+        162
     --> 163         self.write()
         164         if getattr(self, ORI_STATE_KEY, False):
         165             self.make_readonly()
@@ -535,17 +535,16 @@ with yacmap as y:
         897     error = exceptions.best_match(validator.iter_errors(instance))
         898     if error is not None:
     --> 899         raise error
-        900 
-        901 
+        900
+        901
 
 
     ValidationError: 1 is not of type 'string'
-    
+
     Failed validating 'type' in schema['properties']['newattr']:
         {'description': 'string with no whitespace',
          'pattern': '^\\S*$',
          'type': 'string'}
-    
+
     On instance['newattr']:
         1
-

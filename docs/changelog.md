@@ -2,6 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.3] -- 2021-09-20
+## Fixed
+- removed use2to3 for compatibility with setuptools upgrade.
+
+## [0.8.2] -- 2021-06-28
+## Fixed
+- if file is empty, initialize its contents to an empty dict, which prevents failure
+- check for previously applied path to `yaml.SafeLoader` before patching
+
 ## [0.8.1] -- 2021-03-18
 ## Fixed
 - Clarified message for `__internal` key.
@@ -19,7 +28,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.7.1] -- 2021-02-22
 ### Added
-- environment variables expansion in provided paths in `select_config` function 
+- environment variables expansion in provided paths in `select_config` function
 ### Fixed
 - issues with locking nonexistant files; [#41](https://github.com/databio/yacman/issues/41)
 
@@ -29,7 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.6.9] -- 2020-07-01
 ### Changed
-- improved file locking 
+- improved file locking
 ### Removed
 - possibility to provide a file path as `entries` in the `YacAttMap` constructor
 
@@ -48,7 +57,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.6.6] -- 2019-12-13
 ### Added
-- possibility to use `YacAttMap` in a context manager even if it was _not_ read from a file, but a file path attribute has been set 
+- possibility to use `YacAttMap` in a context manager even if it was _not_ read from a file, but a file path attribute has been set
 
 
 ## [0.6.5] -- 2019-12-02
@@ -77,7 +86,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
-- in `select_config` always use default config file path when no valid path is determined 
+- in `select_config` always use default config file path when no valid path is determined
 
 ## [0.6.1] -- 2019-10-08
 
@@ -85,7 +94,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `strict_env` argument to the `select_config` function
 
 ### Changed
-- in `select_config` use the `default_config_filepath` even if no `config_env_vars` were specified 
+- in `select_config` use the `default_config_filepath` even if no `config_env_vars` were specified
 
 ## [0.6.0] -- 2019-10-02
 

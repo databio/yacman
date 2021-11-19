@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 </script>
 
 <style>
-h3 .content { 
+h3 .content {
     padding-left: 22px;
     text-indent: -15px;
  }
@@ -23,7 +23,7 @@ h3 .hljs .content {
     martin-bottom: 0px;
 }
 h4 .content, table .content, p .content, li .content { margin-left: 30px; }
-h4 .content { 
+h4 .content {
     font-style: italic;
     font-size: 1em;
     margin-bottom: 0px;
