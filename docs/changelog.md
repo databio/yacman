@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.8.4] -- Unreleased
+## Fixed
+- a bug that prevented writing a readonly file to an external path
+
 ## [0.8.3] -- 2021-09-20
 ## Fixed
 - removed use2to3 for compatibility with setuptools upgrade.
