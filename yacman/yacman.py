@@ -247,7 +247,7 @@ class YacAttMap(attmap.PathExAttMap):
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
-        if getattr(self[IK], RO_KEY, False):
+        if getattr(self[IK], RO_KEY, False) and filepath is None:
             raise OSError(
                 "You can't call write on an object that was created in read-only mode."
             )

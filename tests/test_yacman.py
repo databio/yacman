@@ -53,7 +53,11 @@ class TestExceptions:
     def test_cant_write_ro_mode(self, cfg_file, list_locks):
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
         with pytest.raises(OSError):
-            yacmap.write(cfg_file)
+            yacmap.write()
+
+    def test_can_write_ro_mode_if_path_provided(self, cfg_file, list_locks):
+        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=False)
+        yacmap.write(cfg_file)
 
     def test_filename_required_when_object_created_from_mapping(self):
         yacmap = yacman.YacAttMap(entries={})
