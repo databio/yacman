@@ -177,7 +177,9 @@ class YAMLConfigManager(MutableMapping):
     def lock(self):
         # print("Locking...")
         if not self.filepath:
-            raise TypeError("Can't lock without a filepath")
+            _LOGGER.warning("No filepath, no need to lock.")
+            return True
+            # raise TypeError("Can't lock without a filepath")
 
         # Check for permissions to write a lock file
         lock_path = make_lock_path(self.filepath)
@@ -196,7 +198,9 @@ class YAMLConfigManager(MutableMapping):
     def unlock(self):
         # print("Unlocking...")
         if not self.filepath:
-            raise TypeError("Can't unlock without a filepath")
+            # raise TypeError("Can't unlock without a filepath")
+            _LOGGER.warning("No filepath, no need to unlock.")
+            return True
         # Check for permissions to write a lock file
         lock_path = make_lock_path(self.filepath)
         if not os.access(os.path.dirname(lock_path), os.W_OK):
