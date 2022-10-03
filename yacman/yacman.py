@@ -404,7 +404,6 @@ def _check_filepath(filepath):
     return filepath
 
 
-
 # Thought about moving this to ubiquerg -- but `yaml` isn't built-in
 # so it would add a new dependency there, which I'd rather not do.
 def load_yaml(filepath):
