@@ -39,17 +39,21 @@ if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
 
 # Constants: to do, remove these
 
-IK = "__internal"
 DEFAULT_WAIT_TIME = 60
 LOCK_PREFIX = "lock."
 SCHEMA_KEY = "schema"
 
-ATTR_KEYS = (
-    IK,
-    SCHEMA_KEY,
-)
 
 from collections.abc import MutableMapping
+
+def ensure_locked(func):
+    """ decorator to apply to functions to make sure they only happen when locked. """
+    def inner_func(self, *args, **kwargs):
+        if not self.locked:
+            raise OSError("This operation should use a context manager to lock the file")
+
+        return func(self, *args, **kwargs)
+    return inner_func
 
 
 class YAMLConfigManager(MutableMapping):
@@ -137,7 +141,7 @@ class YAMLConfigManager(MutableMapping):
                 f" Also tried: {sp}"
             )
             # validate config
-            setattr(getattr(self, IK), SCHEMA_KEY, load_yaml(sp))
+            setattr(self, SCHEMA_KEY, load_yaml(sp))
             self.validate()
 
     @property
@@ -243,6 +247,7 @@ class YAMLConfigManager(MutableMapping):
         # Must return False, otherwise context exceptions are suppressed
         return False
 
+    @ensure_locked
     def rebase(self, filepath=None):
         """
         Reload the object from file, then update with current information
@@ -256,10 +261,11 @@ class YAMLConfigManager(MutableMapping):
             deep_update(self.data, local_data)
             # self.data.update(local_data)
         else:
-            _LOGGER.warning("Rebase has no effect if no filepath")
+            _LOGGER.warning("Rebase has no effect if no filepath given")
 
         return self
 
+    @ensure_locked
     def reset(self, filepath=None):
         """
         Reset dict contents to file contents, or to empty dict if no filepath found.
@@ -283,7 +289,7 @@ class YAMLConfigManager(MutableMapping):
         try:
             _validate(
                 self.to_dict(expand=True),
-                schema or getattr(getattr(self, IK), SCHEMA_KEY),
+                schema or getattr(self, SCHEMA_KEY),
             )
         except ValidationError as e:
             _LOGGER.error(
@@ -301,13 +307,11 @@ class YAMLConfigManager(MutableMapping):
             )
         _LOGGER.debug("Validated successfully")
 
-    def write(self, filepath=None, schema=None, exclude_case=False):
+    @ensure_locked
+    def write(self, schema=None, exclude_case=False):
         """
-        Write the contents to a file.
-
-        Make sure that the object has been created with write capabilities
-
-        :param str filepath: a file path to write to
+        Write the contents to the file backing this object.
+        
         :param dict schema: a schema object to use to validate, it overrides the one
             that has been provided at object construction stage
         :raise OSError: when the object has been created in a read only mode or other
@@ -318,27 +322,33 @@ class YAMLConfigManager(MutableMapping):
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
-        fp = filepath or self.filepath
-        if not fp:
+        if not self.filepath:
             raise OSError("Must provide a filepath to write.")
 
-        if fp == self.filepath:
-            if not self.locked:
-                raise OSError(
-                    "Please write using a context manager, which locks the file"
-                )
-
-        _check_filepath(fp)
-        _LOGGER.debug(f"Writing to file '{fp}'")
-        with open(fp, "w") as f:
+        _check_filepath(self.filepath)
+        _LOGGER.debug(f"Writing to file '{self.filepath}'")
+        with open(self.filepath, "w") as f:
             f.write(self.to_yaml())
 
         if schema is not None or self.validate_on_write:
             self.validate(schema=schema, exclude_case=exclude_case)
 
-        abs_path = os.path.abspath(fp)
+        abs_path = os.path.abspath(self.filepath)
         _LOGGER.debug(f"Wrote to a file: {abs_path}")
         return os.path.abspath(abs_path)
+
+    def write_copy(self, filepath=None):
+        """
+        Write the contents to an external file.
+
+        :param str filepath: a file path to write to
+        """
+
+        _LOGGER.debug(f"Writing to file '{filepath}'")
+        with open(filepath, "w") as f:
+            f.write(self.to_yaml())
+        return filepath
+
 
     def to_yaml(self, trailing_newline=True):
         """
