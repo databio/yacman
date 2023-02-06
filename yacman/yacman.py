@@ -30,7 +30,6 @@ _LOGGER = logging.getLogger(__name__)
 
 # Only do once?
 if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
-
     _LOGGER.debug("Patching yaml loader")
 
     def my_construct_mapping(self, node, deep=False):
