@@ -19,8 +19,6 @@ class TestWriting:
         with yacmap as _:
             assert os.path.exists(locked_cfg_file)
 
-        
-
     def test_write_creates_file(self, data_path, list_locks):
         yacmap = yacman.YAMLConfigManager(entries={})
         yacmap.write_copy(filepath=make_cfg_file_path("writeout.yaml", data_path))
@@ -42,6 +40,7 @@ class TestWriting:
 
         with yacmap as y:
             y.rebase()
+
 
 def cleanup_locks(lcks):
     if lcks:

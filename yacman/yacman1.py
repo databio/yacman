@@ -46,13 +46,18 @@ SCHEMA_KEY = "schema"
 
 from collections.abc import MutableMapping
 
+
 def ensure_locked(func):
-    """ decorator to apply to functions to make sure they only happen when locked. """
+    """decorator to apply to functions to make sure they only happen when locked."""
+
     def inner_func(self, *args, **kwargs):
         if not self.locked:
-            raise OSError("This operation should use a context manager to lock the file")
+            raise OSError(
+                "This operation should use a context manager to lock the file"
+            )
 
         return func(self, *args, **kwargs)
+
     return inner_func
 
 
@@ -311,7 +316,7 @@ class YAMLConfigManager(MutableMapping):
     def write(self, schema=None, exclude_case=False):
         """
         Write the contents to the file backing this object.
-        
+
         :param dict schema: a schema object to use to validate, it overrides the one
             that has been provided at object construction stage
         :raise OSError: when the object has been created in a read only mode or other
@@ -348,7 +353,6 @@ class YAMLConfigManager(MutableMapping):
         with open(filepath, "w") as f:
             f.write(self.to_yaml())
         return filepath
-
 
     def to_yaml(self, trailing_newline=True):
         """
