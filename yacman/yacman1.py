@@ -369,15 +369,17 @@ class YAMLConfigManager(MutableMapping):
         :return str: YAML text representation of this instance.
         """
 
-        if (expand):
+        if expand:
             return yaml.dump(self.exp, default_flow_style=False)
-        return yaml.dump(self.data, default_flow_style=False) + ("\n" if trailing_newline else "")
+        return yaml.dump(self.data, default_flow_style=False) + (
+            "\n" if trailing_newline else ""
+        )
 
     def to_dict(self, expand=True):
         # Seems like it's probably not necessary; can just use the object now.
         # but for backwards compatibility.
         return self.data
- 
+
     def __setitem__(self, item, value):
         self.data[item] = value
 
@@ -412,7 +414,6 @@ class YAMLConfigManager(MutableMapping):
 
     def __repr__(self):
         return f"{type(self).__name__}\n{self.to_yaml()}"
-
 
 
 from ubiquerg import expandpath
