@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import Iterable, Mapping
 from sys import _getframe
+from signal import signal, SIGINT, SIGTERM
 
 import yaml as yaml
 from jsonschema import validate as _validate
@@ -232,6 +233,9 @@ class YAMLConfigManager(MutableMapping):
             self.unlock()
 
     def __enter__(self):
+        # handle a premature Ctrl+C exit from this context manager
+        signal(SIGTERM, self._interrupt_handler)
+        signal(SIGINT, self._interrupt_handler)
         if self.locked:
             _LOGGER.debug("Already locked upon entering context manager")
             self.already_locked = True
@@ -248,6 +252,11 @@ class YAMLConfigManager(MutableMapping):
 
         # Must return False, otherwise context exceptions are suppressed
         return False
+
+    def _interrupt_handler(self, signal_recieved, frame):
+        _LOGGER.warning(f"Recieved {signal_recieved}, unlocking file...")
+        self.__exit__(None, None, None)
+        raise SystemExit
 
     @ensure_locked
     def rebase(self, filepath=None):
@@ -356,64 +365,19 @@ class YAMLConfigManager(MutableMapping):
         Get text for YAML representation.
 
         :param bool trailing_newline: whether to add trailing newline
+        :param bool expand: whether to expand paths in values
         :return str: YAML text representation of this instance.
         """
 
         if (expand):
             return yaml.dump(self.exp, default_flow_style=False)
         return yaml.dump(self.data, default_flow_style=False) + ("\n" if trailing_newline else "")
-        # return "\n".join(self.get_yaml_lines()) + ("\n" if trailing_newline else "")
 
     def to_dict(self, expand=True):
         # Seems like it's probably not necessary; can just use the object now.
         # but for backwards compatibility.
         return self.data
-
-    # def get_yaml_lines(
-    #     self,
-    #     conversions=((lambda obj: isinstance(obj, Mapping) and 0 == len(obj), None),),
-    # ):
-    #     """
-    #     Get collection of lines that define YAML text rep. of this instance.
-
-    #     :param Iterable[(function(object) -> bool, object)] conversions:
-    #         collection of pairs in which first component is predicate function
-    #         and second is what to replace a value with if it satisfies the predicate
-    #     :return list[str]: YAML representation lines
-    #     """
-    #     if 0 == len(self.data):
-    #         return ["{}"]
-    #     # data = self._simplify_keyvalue(
-    #     #     self._data_for_repr(), self._new_empty_basic_map, conversions=conversions
-    #     # )
-    #     # data = dict(self.items())
-    #     return self._render(self.data).split("\n")[1:]
-
-    # def _render(self, data, exclude_class_list=[]):
-    #     def _custom_repr(obj, prefix=""):
-    #         """
-    #         Calls the ordinary repr on every object but list, which is
-    #         converted to a block style string instead.
-
-    #         :param object obj: object to convert to string representation
-    #         :param str prefix: string to prepend to each list line in block
-    #         :return str: custom object representation
-    #         """
-    #         if isinstance(obj, list) and len(obj) > 0:
-    #             return f"\n{prefix} - " + f"\n{prefix} - ".join([str(i) for i in obj])
-    #         return obj.strip("'") if hasattr(obj, "strip") else str(obj)
-
-    #     class_name = self.__class__.__name__
-    #     if class_name in exclude_class_list:
-    #         base = ""
-    #     else:
-    #         base = class_name + "\n"
-
-    #     if data:
-    #         return base + "\n".join(get_data_lines(data, _custom_repr))
-    #     else:
-    #         return class_name + ": {}"
-
+ 
     def __setitem__(self, item, value):
         self.data[item] = value
 
@@ -426,7 +390,6 @@ class YAMLConfigManager(MutableMapping):
         :raise KeyError: if the requested key is unmapped.
         """
         return self.data[item]
-        # return _safely_expand_path(self.data[item]) if self.expand else self.data[item]
 
     @property
     def exp(self) -> dict:
@@ -449,13 +412,6 @@ class YAMLConfigManager(MutableMapping):
 
     def __repr__(self):
         return f"{type(self).__name__}\n{self.to_yaml()}"
-
-    # def __repr__(self):
-    #     # Here we want to render the data in a nice way; and we want to indicate
-    #     # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
-    #     # to give you the data without the class name.
-    #     return self._render(self.data)
-
 
 
 
@@ -486,57 +442,6 @@ def _unsafely_expand_path(x):
         return x
         # return {k: _safely_expand_path(v) for k, v in x.items()}
     return x
-
-
-def get_data_lines(data, fun_key, space_per_level=2, fun_val=None):
-    """
-    Get text representation lines for a mapping's data.
-
-    :param Mapping data: collection of data for which to get repr lines
-    :param function(object, prefix) -> str fun_key: function to render key
-        as text
-    :param function(object, prefix) -> str fun_val: function to render value
-        as text
-    :param int space_per_level: number of spaces per level of nesting
-    :return Iterable[str]: collection of lines
-    """
-
-    # If no specific value-render function, use key-render function
-    fun_val = fun_val or fun_key
-
-    def space(lev):
-        return " " * lev * space_per_level
-
-    # Render a line; pass val=<obj> for a line with a value (i.e., not header)
-    def render(lev, key, **kwargs):
-        ktext = fun_key(key) + ":"
-        try:
-            val = kwargs["val"]
-        except KeyError:
-            return space(lev) + ktext
-        else:
-            return space(lev) + "{} {}".format(
-                ktext, "null" if val is None else fun_val(val, space(lev))
-            )
-
-    def go(kvs, curr_lev, acc):
-        try:
-            k, v = next(kvs)
-        except StopIteration:
-            return acc
-        if not isinstance(v, Mapping) or len(v) == 0:
-            # Add line representing single key-value or empty mapping
-            acc.append(render(curr_lev, k, val=v))
-        else:
-            # Add section header and section data.
-            acc.append(render(curr_lev, k))
-            acc.append("\n".join(go(iter(v.items()), curr_lev + 1, [])))
-        return go(kvs, curr_lev, acc)
-
-    if isinstance(data, Mapping):
-        return go(iter(data.items()), 0, [])
-    if isinstance(data, list):
-        return go(iter(data), 0, [])
 
 
 def _check_filepath(filepath):
