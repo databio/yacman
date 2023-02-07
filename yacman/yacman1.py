@@ -48,7 +48,7 @@ from collections.abc import MutableMapping
 
 
 def ensure_locked(func):
-    """decorator to apply to functions to make sure they only happen when locked."""
+    """Decorator to apply to functions to make sure they only happen when locked."""
 
     def inner_func(self, *args, **kwargs):
         if not self.locked:
@@ -65,7 +65,7 @@ class YAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
     writing, etc.  for YAML configuration files. Without the requirement
-    of attmap (and without providing the attribute-style access).
+    of attmap (and without providing attribute-style access).
     """
 
     def __init__(
@@ -135,7 +135,10 @@ class YAMLConfigManager(MutableMapping):
             entries = self.load(filepath, entries, yamldata, create_file)
 
         # We store the values in a dict under .data
-        self.data = dict(entries or {})
+        if isinstance(entries, list):
+            self.data = entries
+        else:
+            self.data = dict(entries or {})
         if schema_source is not None:
             assert isinstance(schema_source, str), TypeError(
                 f"Path to the schema to validate the config must be a string"
@@ -227,12 +230,6 @@ class YAMLConfigManager(MutableMapping):
     def __del__(self):
         if self.filepath and self.locked:
             self.unlock()
-
-    # def __repr__(self):
-    #     # Here we want to render the data in a nice way; and we want to indicate
-    #     # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
-    #     # to give you the data without the class name.
-    #     return self._render(self.data)
 
     def __enter__(self):
         if self.locked:
@@ -354,64 +351,68 @@ class YAMLConfigManager(MutableMapping):
             f.write(self.to_yaml())
         return filepath
 
-    def to_yaml(self, trailing_newline=True):
+    def to_yaml(self, trailing_newline=False, expand=False):
         """
         Get text for YAML representation.
 
         :param bool trailing_newline: whether to add trailing newline
         :return str: YAML text representation of this instance.
         """
-        return "\n".join(self.get_yaml_lines()) + ("\n" if trailing_newline else "")
+
+        if (expand):
+            return yaml.dump(self.exp, default_flow_style=False)
+        return yaml.dump(self.data, default_flow_style=False) + ("\n" if trailing_newline else "")
+        # return "\n".join(self.get_yaml_lines()) + ("\n" if trailing_newline else "")
 
     def to_dict(self, expand=True):
         # Seems like it's probably not necessary; can just use the object now.
         # but for backwards compatibility.
         return self.data
 
-    def get_yaml_lines(
-        self,
-        conversions=((lambda obj: isinstance(obj, Mapping) and 0 == len(obj), None),),
-    ):
-        """
-        Get collection of lines that define YAML text rep. of this instance.
+    # def get_yaml_lines(
+    #     self,
+    #     conversions=((lambda obj: isinstance(obj, Mapping) and 0 == len(obj), None),),
+    # ):
+    #     """
+    #     Get collection of lines that define YAML text rep. of this instance.
 
-        :param Iterable[(function(object) -> bool, object)] conversions:
-            collection of pairs in which first component is predicate function
-            and second is what to replace a value with if it satisfies the predicate
-        :return list[str]: YAML representation lines
-        """
-        if 0 == len(self.data):
-            return ["{}"]
-        # data = self._simplify_keyvalue(
-        #     self._data_for_repr(), self._new_empty_basic_map, conversions=conversions
-        # )
-        # data = dict(self.items())
-        return self._render(self.data).split("\n")[1:]
+    #     :param Iterable[(function(object) -> bool, object)] conversions:
+    #         collection of pairs in which first component is predicate function
+    #         and second is what to replace a value with if it satisfies the predicate
+    #     :return list[str]: YAML representation lines
+    #     """
+    #     if 0 == len(self.data):
+    #         return ["{}"]
+    #     # data = self._simplify_keyvalue(
+    #     #     self._data_for_repr(), self._new_empty_basic_map, conversions=conversions
+    #     # )
+    #     # data = dict(self.items())
+    #     return self._render(self.data).split("\n")[1:]
 
-    def _render(self, data, exclude_class_list=[]):
-        def _custom_repr(obj, prefix=""):
-            """
-            Calls the ordinary repr on every object but list, which is
-            converted to a block style string instead.
+    # def _render(self, data, exclude_class_list=[]):
+    #     def _custom_repr(obj, prefix=""):
+    #         """
+    #         Calls the ordinary repr on every object but list, which is
+    #         converted to a block style string instead.
 
-            :param object obj: object to convert to string representation
-            :param str prefix: string to prepend to each list line in block
-            :return str: custom object representation
-            """
-            if isinstance(obj, list) and len(obj) > 0:
-                return f"\n{prefix} - " + f"\n{prefix} - ".join([str(i) for i in obj])
-            return obj.strip("'") if hasattr(obj, "strip") else str(obj)
+    #         :param object obj: object to convert to string representation
+    #         :param str prefix: string to prepend to each list line in block
+    #         :return str: custom object representation
+    #         """
+    #         if isinstance(obj, list) and len(obj) > 0:
+    #             return f"\n{prefix} - " + f"\n{prefix} - ".join([str(i) for i in obj])
+    #         return obj.strip("'") if hasattr(obj, "strip") else str(obj)
 
-        class_name = self.__class__.__name__
-        if class_name in exclude_class_list:
-            base = ""
-        else:
-            base = class_name + "\n"
+    #     class_name = self.__class__.__name__
+    #     if class_name in exclude_class_list:
+    #         base = ""
+    #     else:
+    #         base = class_name + "\n"
 
-        if data:
-            return base + "\n".join(get_data_lines(data, _custom_repr))
-        else:
-            return class_name + ": {}"
+    #     if data:
+    #         return base + "\n".join(get_data_lines(data, _custom_repr))
+    #     else:
+    #         return class_name + ": {}"
 
     def __setitem__(self, item, value):
         self.data[item] = value
@@ -428,7 +429,7 @@ class YAMLConfigManager(MutableMapping):
         # return _safely_expand_path(self.data[item]) if self.expand else self.data[item]
 
     @property
-    def exp(self):
+    def exp(self) -> dict:
         """
         Returns a copy of the object's data elements with env vars and user vars
         expanded. Use it like: object.exp["item"]
@@ -447,7 +448,15 @@ class YAMLConfigManager(MutableMapping):
         self.pop(value, None)
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.data})"
+        return f"{type(self).__name__}\n{self.to_yaml()}"
+
+    # def __repr__(self):
+    #     # Here we want to render the data in a nice way; and we want to indicate
+    #     # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
+    #     # to give you the data without the class name.
+    #     return self._render(self.data)
+
+
 
 
 from ubiquerg import expandpath
@@ -524,7 +533,10 @@ def get_data_lines(data, fun_key, space_per_level=2, fun_val=None):
             acc.append("\n".join(go(iter(v.items()), curr_lev + 1, [])))
         return go(kvs, curr_lev, acc)
 
-    return go(iter(data.items()), 0, [])
+    if isinstance(data, Mapping):
+        return go(iter(data.items()), 0, [])
+    if isinstance(data, list):
+        return go(iter(data), 0, [])
 
 
 def _check_filepath(filepath):

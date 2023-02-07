@@ -42,6 +42,11 @@ class TestWriting:
             y.rebase()
 
 
+class TestReadList:
+    def test_read_list(self):
+        yacmap = yacman.YAMLConfigManager(entries=["a", "b", "c"])
+        print(yacmap.to_yaml())
+
 def cleanup_locks(lcks):
     if lcks:
         [os.remove(l) for l in lcks]
