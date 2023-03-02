@@ -2,7 +2,14 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.8.4] -- Unreleased
+## [0.9.0] -- 2022-05-04
+
+This is a transition release that is compatible with the 0.X series, and also provides new capability from 1.0, which will not be backwards-compatible
+
+## Added
+- new `YAMLConfigManager` object, to replace YacAttMap, which will be the new interface in 1.0. 
+
+## [0.8.4] -- 2021-12-02
 ## Fixed
 - a bug that prevented writing a readonly file to an external path
 

@@ -1,0 +1,18 @@
+list: 
+  - a
+  - b
+objects:
+  one:
+    variable1: value1
+    variable2: value2
+  two:
+    - d
+    - e
+  three: ["f", "g"]
+string1: |
+  This is a multi-line string.
+  A multi-line string I say!
+string2: >
+  This is a multi-line string as well.
+  Another multi-line string I say!
+text_expand_home_dir: $HOME

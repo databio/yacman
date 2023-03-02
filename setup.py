@@ -48,7 +48,7 @@ setup(
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
     url="https://github.com/databio/yacman",
-    author=u"Nathan Sheffield, Michal Stolarczyk",
+    author="Nathan Sheffield, Michal Stolarczyk",
     author_email="nathan@code.databio.org",
     **extra
 )

@@ -30,7 +30,6 @@ _LOGGER = logging.getLogger(__name__)
 
 # Only do once?
 if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
-
     _LOGGER.debug("Patching yaml loader")
 
     def my_construct_mapping(self, node, deep=False):
@@ -404,6 +403,8 @@ def _check_filepath(filepath):
     return filepath
 
 
+# Thought about moving this to ubiquerg -- but `yaml` isn't built-in
+# so it would add a new dependency there, which I'd rather not do.
 def load_yaml(filepath):
     """Load a yaml file into a python dict"""
 

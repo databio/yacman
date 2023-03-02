@@ -70,7 +70,7 @@ class TestExceptions:
             yacmap.make_readonly()
 
     def test_warnings(self, cfg_file):
-        with pytest.warns(None):
+        with pytest.warns(UserWarning):
             yacman.YacAttMap({}, writable=True)
 
 
@@ -147,7 +147,7 @@ class TestReading:
         yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         with pytest.raises(RuntimeError):
             yacman.YacAttMap(filepath=cfg_file, wait_max=1)
-        yacmap.make_readonly()
+        # yacmap.make_readonly()
 
     def test_skip_locks_before_reading(self, data_path, cfg_file):
         """
