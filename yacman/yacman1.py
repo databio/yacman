@@ -236,7 +236,7 @@ class YAMLConfigManager(MutableMapping):
         # Here we want to render the data in a nice way; and we want to indicate
         # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
         # to give you the data without the class name.
-        return self._render(self.data)
+        return self.to_yaml(self.data)
 
     # def __repr__(self):
     #     return f"{type(self).__name__}({self.data})"
