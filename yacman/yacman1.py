@@ -232,6 +232,15 @@ class YAMLConfigManager(MutableMapping):
         if self.filepath and self.locked:
             self.unlock()
 
+    def __repr__(self):
+        # Here we want to render the data in a nice way; and we want to indicate
+        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
+        # to give you the data without the class name.
+        return self._render(self.data)
+
+    # def __repr__(self):
+    #     return f"{type(self).__name__}({self.data})"
+
     def __enter__(self):
         # handle a premature Ctrl+C exit from this context manager
         signal(SIGTERM, self._interrupt_handler)
@@ -411,10 +420,6 @@ class YAMLConfigManager(MutableMapping):
         value = self[key]
         del self.data[key]
         self.pop(value, None)
-
-    def __repr__(self):
-        return f"{type(self).__name__}\n{self.to_yaml()}"
-
 
 from ubiquerg import expandpath
 
