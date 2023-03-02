@@ -421,6 +421,7 @@ class YAMLConfigManager(MutableMapping):
         del self.data[key]
         self.pop(value, None)
 
+
 from ubiquerg import expandpath
 
 
