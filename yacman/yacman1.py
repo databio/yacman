@@ -424,8 +424,8 @@ class YAMLConfigManager(MutableMapping):
     def get(
         self,
         arg_name: str,
-        default: str = None,
         env_var: str = None,
+        default: str = None,
         strict: bool = False,
     ):
         """
