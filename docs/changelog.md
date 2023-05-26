@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.9.1] -- unreleased
+
+## Added
+- `.get()` function on `YAMLConfigManager` object
+
 ## [0.9.0] -- 2022-05-04
 
 This is a transition release that is compatible with the 0.X series, and also provides new capability from 1.0, which will not be backwards-compatible
