@@ -421,11 +421,12 @@ class YAMLConfigManager(MutableMapping):
         del self.data[key]
         self.pop(value, None)
 
-    def get(
+    def priority_get(
         self,
         arg_name: str,
         env_var: str = None,
         default: str = None,
+        override: str = None,
         strict: bool = False,
     ):
         """
@@ -435,6 +436,8 @@ class YAMLConfigManager(MutableMapping):
         :param bool strict: Should missing args raise an error? False=warning
         :param env_var: Env var to retrieve from should it be missing from the cfg
         """
+        if override:
+            return override
         if self.data.get(arg_name) is not None:
             return self.data[arg_name]
         if env_var is not None:
