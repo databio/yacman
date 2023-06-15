@@ -421,8 +421,38 @@ class YAMLConfigManager(MutableMapping):
         del self.data[key]
         self.pop(value, None)
 
+    def priority_get(
+        self,
+        arg_name: str,
+        env_var: str = None,
+        default: str = None,
+        override: str = None,
+        strict: bool = False,
+    ):
+        """
+        Helper function to select a value from a config, or, if missing, then go to an env var.
 
-from ubiquerg import expandpath
+        :param str arg_name: Argument to retrieve
+        :param bool strict: Should missing args raise an error? False=warning
+        :param env_var: Env var to retrieve from should it be missing from the cfg
+        """
+        if override:
+            return override
+        if self.data.get(arg_name) is not None:
+            return self.data[arg_name]
+        if env_var is not None:
+            arg = os.getenv(env_var, None)
+            if arg is not None:
+                _LOGGER.debug(f"Value '{arg}' sourced from '{env_var}' env var")
+                return expandpath(arg)
+        if default is not None:
+            return default
+        if strict:
+            message = (
+                "Value for required argument '{arg_name}' could not be determined."
+            )
+            _LOGGER.warning(message)
+            raise Exception(message)
 
 
 # A big issue here is: if you route the __getitem__ through this,
