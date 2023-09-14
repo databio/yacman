@@ -8,8 +8,9 @@ import yaml as yaml
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
 from ubiquerg import create_lock, expandpath, is_url, make_lock_path, mkabs, remove_lock
-
+from ._version import __version__
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.debug(f"Using yacman version {__version__}")
 
 # Hack for yaml string indexes
 # Credit: Anthon
@@ -555,14 +556,15 @@ def get_first_env_var(ev):
             pass
 
 
+
 def select_config(
-    config_filepath=None,
+    config_filepath: str=None,
     config_env_vars=None,
-    default_config_filepath=None,
-    check_exist=True,
+    default_config_filepath: str=None,
+    check_exist: bool=True,
     on_missing=lambda fp: IOError(fp),
-    strict_env=False,
-):
+    strict_env: bool=False,
+) -> str:
     """
     Selects the config file to load.
 
@@ -594,29 +596,37 @@ def select_config(
             raise result
         return os.path.abspath(result)
 
-    _LOGGER.debug("No local config file was provided")
+    _LOGGER.debug("No local config file was provided.")
     selected_filepath = None
 
     # Second priority: environment variables (in order)
     if config_env_vars:
-        _LOGGER.debug(f"Checking for environment variable: {config_env_vars}")
+        _LOGGER.debug(f"Checking environment variables: {config_env_vars}")
 
         cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
         if not check_exist or os.path.isfile(cfg_file):
             _LOGGER.debug(f"Found config file in {cfg_env_var}: {cfg_file}")
             selected_filepath = cfg_file
-        if selected_filepath is None and cfg_file and strict_env:
-            raise OSError(
-                f"Environment variable ({', '.join(config_env_vars)}) does "
-                f"not point to any existing file: {cfg_file}"
-            )
+
+        else:
+            if strict_env:
+                raise OSError(
+                    f"Environment variable ({', '.join(config_env_vars)}) does "
+                    f"not point to any existing file: {cfg_file}"
+                )
+            else:
+                _LOGGER.info(f"Env var '{cfg_env_var}' file not found: '{cfg_file}'.")
     if selected_filepath is None:
         # Third priority: default filepath
-        _LOGGER.info(
-            f"Using default config. No config found in env var: {str(config_env_vars)}"
-        )
-        return default_config_filepath
+        if default_config_filepath:
+            _LOGGER.info(
+                f"Using default config. No config found in env var: {str(config_env_vars)}"
+            )
+            return default_config_filepath
+        else:
+            _LOGGER.info(f"Could not locate config file.")
+            return None
     return (
         os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
     )
