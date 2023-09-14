@@ -564,6 +564,7 @@ def select_config(
     check_exist: bool=True,
     on_missing=lambda fp: IOError(fp),
     strict_env: bool=False,
+    config_name=None,
 ) -> str:
     """
     Selects the config file to load.
@@ -586,27 +587,32 @@ def select_config(
     """
 
     # First priority: given file
+    if type(config_name) is str:
+        config_name = f"{config_name} "
+    else:
+        config_name = ""
+
     if config_filepath:
         config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
             return os.path.abspath(config_filepath)
-        _LOGGER.error(f"Config file path isn't a file: {config_filepath}")
+        _LOGGER.error(f"{config_name}config file path isn't a file: {config_filepath}")
         result = on_missing(config_filepath)
         if isinstance(result, Exception):
             raise result
         return os.path.abspath(result)
 
-    _LOGGER.debug("No local config file was provided.")
+    _LOGGER.debug("No local {config_name}config file was provided.")
     selected_filepath = None
 
     # Second priority: environment variables (in order)
     if config_env_vars:
-        _LOGGER.debug(f"Checking environment variables: {config_env_vars}")
+        _LOGGER.debug(f"Checking environment variables '{config_env_vars}' for {config_name}config")
 
         cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
 
         if not check_exist or os.path.isfile(cfg_file):
-            _LOGGER.debug(f"Found config file in {cfg_env_var}: {cfg_file}")
+            _LOGGER.debug(f"Found {config_name}config file in {cfg_env_var}: {cfg_file}")
             selected_filepath = cfg_file
 
         else:
@@ -621,11 +627,11 @@ def select_config(
         # Third priority: default filepath
         if default_config_filepath:
             _LOGGER.info(
-                f"Using default config. No config found in env var: {str(config_env_vars)}"
+                f"Using default {config_name}config. You may specify in env var: {str(config_env_vars)}"
             )
             return default_config_filepath
         else:
-            _LOGGER.info(f"Could not locate config file.")
+            _LOGGER.info(f"Could not locate {config_name}config file.")
             return None
     return (
         os.path.abspath(selected_filepath) if selected_filepath else selected_filepath

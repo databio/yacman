@@ -436,4 +436,3 @@ def load_yaml(filepath):
         return yaml.safe_load(text)
     else:
         return read_yaml_file(filepath)
-
