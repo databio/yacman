@@ -576,6 +576,9 @@ def select_config(
     else:
         config_name = ""
 
+    if type(config_env_vars) is str:
+        config_env_vars = [config_env_vars]
+
     if config_filepath:
         config_filepath = os.path.expandvars(config_filepath)
         if not check_exist or os.path.isfile(config_filepath):
