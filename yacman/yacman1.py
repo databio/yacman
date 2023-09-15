@@ -264,11 +264,11 @@ class YAMLConfigManager(MutableMapping):
         return False
 
     def _interrupt_handler(self, signal_received, frame):
-        if signal_received == signal.SIGINT:
+        if signal_received == SIGINT:
             _LOGGER.warning(f"Received SIGINT, unlocking file and exiting...")
             self.__exit__(None, None, None)
             raise KeyboardInterrupt
-        if signal_received == signal.SIGTERM:
+        if signal_received == SIGTERM:
             _LOGGER.warning(f"Received SIGTERM, unlocking file and exiting...")
             self.__exit__(None, None, None)
             return
