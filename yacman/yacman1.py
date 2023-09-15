@@ -263,10 +263,15 @@ class YAMLConfigManager(MutableMapping):
         # Must return False, otherwise context exceptions are suppressed
         return False
 
-    def _interrupt_handler(self, signal_recieved, frame):
-        _LOGGER.warning(f"Recieved {signal_recieved}, unlocking file...")
-        self.__exit__(None, None, None)
-        raise SystemExit
+    def _interrupt_handler(self, signal_received, frame):
+        if signal_received == signal.SIGINT:
+            _LOGGER.warning(f"Received SIGINT, unlocking file and exiting...")
+            self.__exit__(None, None, None)
+            raise KeyboardInterrupt
+        if signal_received == signal.SIGTERM:
+            _LOGGER.warning(f"Received SIGTERM, unlocking file and exiting...")
+            self.__exit__(None, None, None)
+            return
 
     @ensure_locked
     def rebase(self, filepath=None):
@@ -534,27 +539,6 @@ def load_yaml(filepath):
         return read_yaml_file(filepath)
 
 
-def get_first_env_var(ev):
-    """
-    Get the name and value of the first set environment variable
-
-    :param str | Iterable[str] ev: a list of the environment variable names
-    :return (str, str): name and the value of the environment variable
-    """
-    if isinstance(ev, str):
-        ev = [ev]
-    elif not isinstance(ev, Iterable):
-        raise TypeError(
-            f"Env var must be single name or collection of names; got {type(ev)}"
-        )
-    # TODO: we should handle the null (not found) case, as client code is
-    #  inclined to unpack, and ValueError guard is vague.
-    for v in ev:
-        try:
-            return v, os.environ[v]
-        except KeyError:
-            pass
-
 
 
 def select_config(
@@ -602,27 +586,28 @@ def select_config(
             raise result
         return os.path.abspath(result)
 
-    _LOGGER.debug("No local {config_name}config file was provided.")
+    _LOGGER.debug(f"No local {config_name}config file was provided.")
     selected_filepath = None
 
     # Second priority: environment variables (in order)
     if config_env_vars:
         _LOGGER.debug(f"Checking environment variables '{config_env_vars}' for {config_name}config")
 
-        cfg_env_var, cfg_file = get_first_env_var(config_env_vars) or ["", ""]
-
-        if not check_exist or os.path.isfile(cfg_file):
-            _LOGGER.debug(f"Found {config_name}config file in {cfg_env_var}: {cfg_file}")
-            selected_filepath = cfg_file
-
-        else:
-            if strict_env:
-                raise OSError(
-                    f"Environment variable ({', '.join(config_env_vars)}) does "
-                    f"not point to any existing file: {cfg_file}"
-                )
+        for env_var in config_env_vars:
+            result = os.environ.get(env_var, None)
+            if result == None:
+                _LOGGER.debug(f"Env var '{env_var}' not set.")
+                continue
+            elif result == "":
+                _LOGGER.debug(f"Env var '{env_var}' exists, but value is empty.")
+                continue
+            elif not os.path.isfile(result):
+                _LOGGER.debug(f"Env var '{env_var}' file not found: {result}")
+                continue
             else:
-                _LOGGER.info(f"Env var '{cfg_env_var}' file not found: '{cfg_file}'.")
+                _LOGGER.debug(f"Found {config_name}config file in {env_var}: {result}")
+                selected_filepath = result
+
     if selected_filepath is None:
         # Third priority: default filepath
         if default_config_filepath:
