@@ -2,6 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.9.2] -- 2023-10-05
+
+## Added
+- new functionality for handling names of config files
+
+## Fixed
+- bugs with selecting a config file
+- bug with exiting Python on system interrupt
+
 ## [0.9.1] -- 2023-06-15
 
 ## Added
