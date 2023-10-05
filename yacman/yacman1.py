@@ -9,6 +9,7 @@ from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
 from ubiquerg import create_lock, expandpath, is_url, make_lock_path, mkabs, remove_lock
 from ._version import __version__
+
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.debug(f"Using yacman version {__version__}")
 
@@ -539,15 +540,13 @@ def load_yaml(filepath):
         return read_yaml_file(filepath)
 
 
-
-
 def select_config(
-    config_filepath: str=None,
+    config_filepath: str = None,
     config_env_vars=None,
-    default_config_filepath: str=None,
-    check_exist: bool=True,
+    default_config_filepath: str = None,
+    check_exist: bool = True,
     on_missing=lambda fp: IOError(fp),
-    strict_env: bool=False,
+    strict_env: bool = False,
     config_name=None,
 ) -> str:
     """
@@ -594,7 +593,9 @@ def select_config(
 
     # Second priority: environment variables (in order)
     if config_env_vars:
-        _LOGGER.debug(f"Checking environment variables '{config_env_vars}' for {config_name}config")
+        _LOGGER.debug(
+            f"Checking environment variables '{config_env_vars}' for {config_name}config"
+        )
 
         for env_var in config_env_vars:
             result = os.environ.get(env_var, None)
