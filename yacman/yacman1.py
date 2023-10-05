@@ -620,6 +620,9 @@ def select_config(
             )
             return default_config_filepath
         else:
+            if strict_env:
+                raise OSError("Unable to select config file.")
+
             _LOGGER.info(f"Could not locate {config_name}config file.")
             return None
     return (
