@@ -2,8 +2,6 @@
 Constant variables for yacman package
 """
 
-IK = "__internal"
-
 FILEPATH_KEY = "file_path"
 RO_KEY = "ro"
 USE_LOCKS_KEY = "locks"
@@ -15,7 +13,6 @@ WRITE_VALIDATE_KEY = "write_validate"
 SCHEMA_KEY = "schema"
 
 ATTR_KEYS = (
-    IK,
     USE_LOCKS_KEY,
     FILEPATH_KEY,
     RO_KEY,

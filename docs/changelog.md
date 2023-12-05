@@ -2,6 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [1.0.0] -- Unreleased
+
+## Fixed
+- simplified dependencies
+
+## Removed
+- jsonschema validation
+- attmap support
+
 ## [0.9.2] -- 2023-10-05
 
 ## Added

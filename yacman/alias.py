@@ -5,14 +5,14 @@ from warnings import warn
 
 from .const import *
 from .exceptions import *
-from .yacman import YacAttMap, _warn_deprecated
+from .yacman import YAMLConfigManager, _warn_deprecated
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class AliasedYacAttMap(YacAttMap):
+class AliasedYAMLConfigManager(YAMLConfigManager):
     """
-    A class that extends YacAttMap to provide alias feature.
+    A class that extends YAMLConfigManager to provide alias feature.
 
     The items in the object can be accessed using the original key or an alias,
     if defined in the aliases Mapping.
@@ -23,7 +23,7 @@ class AliasedYacAttMap(YacAttMap):
         entries=None,
         filepath=None,
         yamldata=None,
-        writable=False,
+        locked=False,
         wait_max=DEFAULT_WAIT_TIME,
         skip_read_lock=False,
         aliases=None,
@@ -37,8 +37,7 @@ class AliasedYacAttMap(YacAttMap):
             collection of key-value pairs.
         :param str filepath: YAML filepath to the config file.
         :param str yamldata: YAML-formatted string
-        :param bool writable: whether to create the object with write
-            capabilities
+        :param bool locked: whether to initialize as locked (providing write capability)
         :param int wait_max: how long to wait for creating an object when the
             file that data will be read from is locked
         :param bool skip_read_lock: whether the file should not be locked for
@@ -51,20 +50,20 @@ class AliasedYacAttMap(YacAttMap):
         :param bool exact: whether aliases should not be used, even if defined
         """
 
-        super(AliasedYacAttMap, self).__init__(
+        super(AliasedYAMLConfigManager, self).__init__(
             entries=entries,
             filepath=filepath,
             yamldata=yamldata,
-            writable=writable,
+            locked=locked,
             wait_max=wait_max,
             skip_read_lock=skip_read_lock,
         )
-        setattr(self[IK], ALIASES_KEY_RAW, {})
+        setattr(self, ALIASES_KEY_RAW, {})
         if not exact:
             if isinstance(aliases, Mapping) and is_aliases_mapping_valid(
                 aliases, aliases_strict
             ):
-                setattr(self[IK], ALIASES_KEY_RAW, aliases)
+                setattr(self, ALIASES_KEY_RAW, aliases)
             elif callable(aliases):
                 if len(getfullargspec(aliases).args) != 1:
                     _emit_msg(
@@ -84,7 +83,7 @@ class AliasedYacAttMap(YacAttMap):
                     )
                 else:
                     if is_aliases_mapping_valid(res):
-                        setattr(self[IK], ALIASES_KEY_RAW, res)
+                        setattr(self, ALIASES_KEY_RAW, res)
                     else:
                         _emit_msg(
                             aliases_strict,
@@ -97,20 +96,20 @@ class AliasedYacAttMap(YacAttMap):
 
         # convert the original, condensed mapping to a data structure with
         # optimal time complexity
-        setattr(self[IK], ALIASES_KEY, {})
-        for k, v in self[IK][ALIASES_KEY_RAW].items():
+        setattr(self, ALIASES_KEY, {})
+        for k, v in getattr(self, ALIASES_KEY_RAW).items():
             for alias in v:
-                self[IK][ALIASES_KEY][alias] = k
+                getattr(self, ALIASES_KEY)[alias] = k
 
-    def __getitem__(self, item, expand=True, to_dict=False):
+    def __getitem__(self, item):
         """
         This item accession method will try to access the value by a literal
         key. If the key is not defined in the object it will try to access the
         key by it's alias, if defined. If both fail, a KeyError is raised.
         """
         try:
-            return super(AliasedYacAttMap, self).__getitem__(
-                item=item, expand=expand, to_dict=to_dict
+            return super(AliasedYAMLConfigManager, self).__getitem__(
+                item=item,
             )
         except KeyError:
             try:
@@ -118,8 +117,8 @@ class AliasedYacAttMap(YacAttMap):
             except UndefinedAliasError:
                 raise KeyError(item)
             else:
-                return super(AliasedYacAttMap, self).__getitem__(
-                    item=key, expand=expand, to_dict=to_dict
+                return super(AliasedYAMLConfigManager, self).__getitem__(
+                    item=key,
                 )
 
     def __contains__(self, key):
@@ -129,7 +128,7 @@ class AliasedYacAttMap(YacAttMap):
         If both fail, a negative decision is returned; otherwise -- positive.
         """
         try:
-            self.__getitem__(key, expand=False)
+            self.__getitem__(key)
         except (UndefinedAliasError, KeyError):
             try:
                 alias_key = self.get_key(key)
@@ -137,7 +136,7 @@ class AliasedYacAttMap(YacAttMap):
                 return False
             else:
                 try:
-                    self.__getitem__(alias_key, expand=False)
+                    self.__getitem__(alias_key)
                 except (UndefinedAliasError, KeyError):
                     return False
                 else:
@@ -155,10 +154,10 @@ class AliasedYacAttMap(YacAttMap):
             alias_key = self.get_key(alias=key)
         except (UndefinedAliasError, KeyError):
             # alias was not used, try to delete the literal key
-            super(AliasedYacAttMap, self).__delitem__(key=key)
+            super(AliasedYAMLConfigManager, self).__delitem__(key=key)
         else:
             # alias was used, try to delete the alias
-            super(AliasedYacAttMap, self).__delitem__(key=alias_key)
+            super(AliasedYAMLConfigManager, self).__delitem__(key=alias_key)
 
     @property
     def alias_dict(self):
@@ -168,7 +167,7 @@ class AliasedYacAttMap(YacAttMap):
         :return dict: alias-key mapping (one to one)
         """
         _warn_deprecated(obj=self)
-        return getattr(self[IK], ALIASES_KEY)
+        return getattr(self, ALIASES_KEY)
 
     @property
     def _raw_alias_dict(self):
@@ -179,7 +178,7 @@ class AliasedYacAttMap(YacAttMap):
         :return dict: key-aliases mapping (one to many)
         """
         _warn_deprecated(obj=self)
-        return getattr(self[IK], ALIASES_KEY_RAW)
+        return getattr(self, ALIASES_KEY_RAW)
 
     def get_aliases(self, key):
         """
@@ -193,7 +192,7 @@ class AliasedYacAttMap(YacAttMap):
             requested key
         """
         aliases = []
-        for a, k in self[IK][ALIASES_KEY].items():
+        for a, k in getattr(self, ALIASES_KEY).items():
             if k == key:
                 aliases.append(a)
         if aliases:
@@ -211,16 +210,16 @@ class AliasedYacAttMap(YacAttMap):
         :raise UndefinedAliasError: if a no key has been defined for the
             requested alias
         """
-        try:
-            # first try to use the parent method (doesn't try to use aliases) to
-            # check if the __internal key is defined.
-            # Otherwise we would end up in an infinite recursion loop.
-            super(AliasedYacAttMap, self).__getitem__(item=IK, expand=False)
-        except KeyError:
-            # raise UndefinedAliasError, which is caught in the updated __getitem__ method
-            raise UndefinedAliasError()
-        if alias in self[IK][ALIASES_KEY].keys():
-            return self[IK][ALIASES_KEY][alias]
+        # try:
+        #     # first try to use the parent method (doesn't try to use aliases) to
+        #     # check if the __internal key is defined.
+        #     # Otherwise we would end up in an infinite recursion loop.
+        #     super(AliasedYAMLConfigManager, self).__getitem__(IK)
+        # except KeyError:
+        #     # raise UndefinedAliasError, which is caught in the updated __getitem__ method
+        #     raise UndefinedAliasError()
+        if alias in getattr(self, ALIASES_KEY).keys():
+            return getattr(self, ALIASES_KEY)[alias]
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
     def set_aliases(self, key, aliases, overwrite=False, reset_key=False):
@@ -243,17 +242,17 @@ class AliasedYacAttMap(YacAttMap):
                 pass
             else:
                 for a in current_aliases:
-                    del self[IK][ALIASES_KEY][a]
+                    del getattr(self, ALIASES_KEY)[a]
                     removed_aliases.append(a)
 
         set_aliases = []
         for alias in _make_list_of_aliases(aliases):
-            if alias in self[IK][ALIASES_KEY]:
+            if alias in getattr(self, ALIASES_KEY):
                 if overwrite:
-                    self[IK][ALIASES_KEY][alias] = key
+                    getattr(self, ALIASES_KEY)[alias] = key
                     set_aliases.append(alias)
             else:
-                self[IK][ALIASES_KEY][alias] = key
+                getattr(self, ALIASES_KEY)[alias] = key
                 set_aliases.append(alias)
         _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
         return set_aliases, removed_aliases
@@ -279,7 +278,7 @@ class AliasedYacAttMap(YacAttMap):
                 else current_aliases
             )
             for alias in existing_aliases:
-                del self[IK][ALIASES_KEY][alias]
+                del getattr(self, ALIASES_KEY)[alias]
                 removed.append(alias)
             return removed
 
