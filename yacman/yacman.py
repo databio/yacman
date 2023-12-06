@@ -45,7 +45,7 @@ if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
 DEFAULT_WAIT_TIME = 60
 LOCK_PREFIX = "lock."
 SCHEMA_KEY = "schema"
-
+FILEPATH_KEY = "file_path"
 
 from collections.abc import MutableMapping
 
@@ -303,6 +303,37 @@ class YAMLConfigManager(MutableMapping):
         else:
             self.data = self.load(entries={}, skip_read_lock=True)
         return self
+
+    def validate(self, schema=None, exclude_case=False):
+            """
+            Validate the object against a schema
+
+            :param dict schema: a schema object to use to validate, it overrides the one
+                that has been provided at object construction stage
+            :param bool exclude_case: whether to exclude validated objects
+                from the error. Useful when used with large configs
+            """
+            try:
+                _validate(
+                    self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY)
+                )
+            except ValidationError as e:
+                _LOGGER.error(
+                    f"{self.__class__.__name__} object did not pass schema validation"
+                )
+                # if getattr(self, FILEPATH_KEY, None) is not None:
+                    # need to unlock locked files in case of validation error so that no
+                    # locks are left in place
+                    # self.make_readonly()
+                    # commented out because I think this is taken care of my context managers now
+                if not exclude_case:
+                    raise
+                raise ValidationError(
+                    f"{self.__class__.__name__} object did not pass schema validation: "
+                    f"{e.message}"
+                )
+            _LOGGER.debug("Validated successfully")
+
 
     @ensure_locked
     def write(self, schema=None, exclude_case=False):
