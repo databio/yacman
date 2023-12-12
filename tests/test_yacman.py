@@ -32,6 +32,21 @@ class TestWriting:
         assert os.path.exists(make_cfg_file_path("writeout.yaml", data_path))
         os.remove(make_cfg_file_path("writeout.yaml", data_path))
 
+
+    def test_write(self, tmpdir):
+        # Set up an empty temp file
+        p = tmpdir.mkdir("sub").join("hello.yaml")
+        p.write("{}")
+        temp_path = str(p)
+        yacmap = yacman.YAMLConfigManager(filepath=temp_path)
+        rand_var = int.from_bytes(os.urandom(5), byteorder="big")
+        yacmap["random_test_var"] = rand_var
+        with yacmap as y:
+            y.write()
+        yac2 = yacman.YAMLConfigManager(filepath=temp_path)
+        assert yac2["random_test_var"] == rand_var
+
+
     def test_rebase_only_on_locked(self, cfg_file):
         yacmap = yacman.YAMLConfigManager(filepath=cfg_file)
 
