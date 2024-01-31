@@ -1,13 +1,21 @@
 import logging
 import os
-from collections.abc import Iterable, Mapping
-from sys import _getframe
-from signal import signal, SIGINT, SIGTERM
-
 import yaml
+
+from collections.abc import Iterable, Mapping
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
-from ubiquerg import create_lock, expandpath, is_url, make_lock_path, mkabs, remove_lock
+from sys import _getframe
+from ubiquerg import (
+    expandpath,
+    is_url,
+    ThreeLocker,
+    ensure_locked,
+    locked_read_file,
+    READ,
+    WRITE,
+)
+
 from ._version import __version__
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,55 +51,37 @@ if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
 # Constants: to do, remove these
 
 DEFAULT_WAIT_TIME = 60
-LOCK_PREFIX = "lock."
+# LOCK_PREFIX = "lock."
 SCHEMA_KEY = "schema"
 FILEPATH_KEY = "file_path"
 
 from collections.abc import MutableMapping
 
-
-def ensure_locked(func):
-    """Decorator to apply to functions to make sure they only happen when locked."""
-
-    def inner_func(self, *args, **kwargs):
-        if not self.locked:
-            raise OSError(
-                "This operation should use a context manager to lock the file"
-            )
-
-        return func(self, *args, **kwargs)
-
-    return inner_func
+# Since read and write are now different context managers, we have to
+# separate them like this, instead of using __enter__ and __exit__ on the class
+# itself, which only allows one type of context manager.
 
 
 class YAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
-    writing, etc.  for YAML configuration files. Without the requirement
-    of attmap (and without providing attribute-style access).
+    writing, etc.  for YAML configuration files.
     """
 
     def __init__(
         self,
         entries=None,
-        filepath=None,
-        yamldata=None,
-        locked=False,
         wait_max=DEFAULT_WAIT_TIME,
         strict_ro_locks=False,
-        skip_read_lock=False,
         schema_source=None,
         validate_on_write=False,
-        create_file=False,
     ):
         """
         Object constructor
 
         :param Iterable[(str, object)] | Mapping[str, object] entries: YAML collection
             of key-value pairs.
-        :param str filepath: Path to the YAML config file.
         :param str yamldata: YAML-formatted string
-        :param bool locked: Whether to initialize as locked (providing write capability)
         :param int wait_max: how long to wait for creating an object when the file
             that data will be read from is locked
         :param bool strict_ro_locks: By default, we allow RO filesystems that can't be locked.
@@ -104,38 +94,16 @@ class YAMLConfigManager(MutableMapping):
         :param bool validate_on_write: a boolean indicating whether the object should be
             validated every time the `write` method is executed, which is
             a way of preventing invalid config writing
-        :param str create_file: Create an empty file at filepath upon data load.
+
         """
 
         # Settings for this config object
-        if filepath:
-            self.filepath = mkabs(filepath)
-        else:
-            self.filepath = None
+        self.filepath = None
         self.wait_max = wait_max
-        self.skip_read_lock = skip_read_lock
         self.schema_source = schema_source
         self.validate_on_write = validate_on_write
-        self.locked = locked
         self.strict_ro_locks = strict_ro_locks
-        self.already_locked = locked
-
-        if self.locked:
-            if filepath:
-                create_lock(filepath, wait_max)
-            else:
-                self.locked = False
-                locked = False
-                _LOGGER.warning(
-                    "Argument 'locked' is disregarded when the object is created "
-                    "with 'entries' rather than 'filepath'"
-                )
-
-        if self.filepath and not skip_read_lock:
-            with self as _:
-                entries = self.load(filepath, entries, yamldata, create_file)
-        else:
-            entries = self.load(filepath, entries, yamldata, create_file)
+        self.locker = None
 
         # We store the values in a dict under .data
         if isinstance(entries, list):
@@ -155,187 +123,137 @@ class YAMLConfigManager(MutableMapping):
             setattr(self, SCHEMA_KEY, load_yaml(sp))
             self.validate()
 
+    @classmethod
+    def from_obj(cls, entries: object, **kwargs):
+        """
+        Initialize from a Python object (dict, list, or primitive).
+
+        :param obj entries: object to initialize from.
+        :param kwargs: Keyword arguments to pass to the constructor.
+        """
+        return cls(entries, **kwargs)
+
+    @classmethod
+    def from_yaml_data(cls, yamldata, **kwargs):
+        """
+        Initialize from a YAML string.
+
+        :param str yamldata: YAML-formatted string.
+        :param kwargs: Keyword arguments to pass to the constructor.
+        """
+        entries = yaml.load(yamldata, yaml.SafeLoader)
+        return cls(entries, **kwargs)
+
+    @classmethod
+    def from_yaml_file(cls, filepath: str, create_file: bool = False, **kwargs):
+        """
+        Initialize from a YAML file.
+
+        :param str filepath: Path to the YAML config file.
+        :param str create_file: Create a file at filepath if it doesn't exist.
+        :param kwargs: Keyword arguments to pass to the constructor.
+        """
+
+        file_contents = locked_read_file(filepath, create_file=create_file)
+        entries = yaml.load(file_contents, yaml.SafeLoader)
+        ref = cls(entries, **kwargs)
+        ref.locker = ThreeLocker(filepath)
+        return ref
+
+    def update_from_yaml_file(self, filepath=None):
+        self.data.update(load_yaml(filepath))
+        return
+
+    def update_from_yaml_data(self, yamldata=None):
+        self.data.update(yaml.load(yamldata, yaml.SafeLoader))
+        return
+
+    def update_from_obj(self, entries=None):
+        self.data.update(entries)
+        return
+
     @property
     def settings(self):
         return {
             "wait_max": self.wait_max,
-            "skip_read_lock": self.skip_read_lock,
             "schema_source": self.schema_source,
             "validate_on_write": self.validate_on_write,
             "locked": self.locked,
             "strict_ro_locks": self.strict_ro_locks,
-            "locked": self.already_locked,
         }
 
-    def load(self, filepath=None, entries=None, yamldata=None, create_file=False):
-        if filepath:
-            if os.path.exists(filepath):
-                file_contents = load_yaml(filepath)
-            elif create_file:
-                _LOGGER.debug("File does not exist, create_file is true")
-                file_contents = {}
-                with open(filepath, "w") as file:
-                    pass
-            else:
-                raise FileNotFoundError(f"No such file: {filepath}")
-
-            if entries:
-                if file_contents is None:
-                    # if file is empty, initialize its contents to an empty dict
-                    file_contents = {}
-                file_contents.update(entries)
-            entries = file_contents
-        elif yamldata:
-            entries = yaml.load(yamldata, yaml.SafeLoader)
-        return entries
-
-    def lock(self):
-        # print("Locking...")
-        if not self.filepath:
-            _LOGGER.warning("No filepath, no need to lock.")
-            return True
-            # raise TypeError("Can't lock without a filepath")
-
-        # Check for permissions to write a lock file
-        lock_path = make_lock_path(self.filepath)
-        if not os.access(os.path.dirname(lock_path), os.W_OK):
-            if self.strict_ro_locks:
-                raise OSError(f"No write access to '{lock_path}'; can't lock file.")
-            else:
-                _LOGGER.warning(f"No write access to '{lock_path}'; can't lock file.")
-                self.locked = True
-                return True
-
-        create_lock(self.filepath, self.wait_max)
-        self.locked = True
-        return True
-
-    def unlock(self):
-        # print("Unlocking...")
-        if not self.filepath:
-            # raise TypeError("Can't unlock without a filepath")
-            _LOGGER.warning("No filepath, no need to unlock.")
-            return True
-        # Check for permissions to write a lock file
-        lock_path = make_lock_path(self.filepath)
-        if not os.access(os.path.dirname(lock_path), os.W_OK):
-            if self.strict_ro_locks:
-                raise OSError(f"No write access to '{lock_path}' can't lock file.")
-            else:
-                _LOGGER.warning(f"No write access to '{lock_path}' can't lock file.")
-                self.locked = False
-                return True
-
-        remove_lock(self.filepath)
-        self.locked = False
-        return True
-
     def __del__(self):
-        if self.filepath and self.locked:
-            self.unlock()
+        if self.locker:
+            del self.locker
 
     def __repr__(self):
-        # Here we want to render the data in a nice way; and we want to indicate
-        # the class if it's NOT a YacAttMap. If it is a YacAttMap we just want
-        # to give you the data without the class name.
+        # Render the data in a nice way
         return self.to_yaml(self.data)
 
-    # def __repr__(self):
-    #     return f"{type(self).__name__}({self.data})"
-
     def __enter__(self):
-        # handle a premature Ctrl+C exit from this context manager
-        signal(SIGTERM, self._interrupt_handler)
-        signal(SIGINT, self._interrupt_handler)
-        if self.locked:
-            _LOGGER.debug("Already locked upon entering context manager")
-            self.already_locked = True
-        else:
-            self.lock()
-        return self
+        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        if self.already_locked:
-            self.locked = True
-            self.already_locked = False
-            return False
-        self.unlock()
+    def __exit__(self):
+        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
 
-        # Must return False, otherwise context exceptions are suppressed
-        return False
-
-    def _interrupt_handler(self, signal_received, frame):
-        if signal_received == SIGINT:
-            _LOGGER.warning(f"Received SIGINT, unlocking file and exiting...")
-            self.__exit__(None, None, None)
-            raise KeyboardInterrupt
-        if signal_received == SIGTERM:
-            _LOGGER.warning(f"Received SIGTERM, unlocking file and exiting...")
-            self.__exit__(None, None, None)
-            return
-
-    @ensure_locked
+    @ensure_locked(READ)
     def rebase(self, filepath=None):
         """
         Reload the object from file, then update with current information
 
         :param str filepath: path to the file that should be read
         """
-        fp = filepath or self.filepath
+        fp = filepath or self.locker.filepath
         if fp is not None:
             local_data = self.data
-            self.data = self.load(filepath=fp)
+            self.data = load_yaml(fp)
             deep_update(self.data, local_data)
-            # self.data.update(local_data)
         else:
             _LOGGER.warning("Rebase has no effect if no filepath given")
 
         return self
 
-    @ensure_locked
+    @ensure_locked(READ)
     def reset(self, filepath=None):
         """
         Reset dict contents to file contents, or to empty dict if no filepath found.
         """
-        fp = filepath or self.filepath
+        fp = filepath or self.locker.filepath
         if fp is not None:
-            self.data = self.load(filepath=fp, skip_read_lock=True)
+            self.data = load_yaml(fp)
         else:
-            self.data = self.load(entries={}, skip_read_lock=True)
+            self.data = {}
         return self
 
     def validate(self, schema=None, exclude_case=False):
-            """
-            Validate the object against a schema
+        """
+        Validate the object against a schema
 
-            :param dict schema: a schema object to use to validate, it overrides the one
-                that has been provided at object construction stage
-            :param bool exclude_case: whether to exclude validated objects
-                from the error. Useful when used with large configs
-            """
-            try:
-                _validate(
-                    self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY)
-                )
-            except ValidationError as e:
-                _LOGGER.error(
-                    f"{self.__class__.__name__} object did not pass schema validation"
-                )
-                # if getattr(self, FILEPATH_KEY, None) is not None:
-                    # need to unlock locked files in case of validation error so that no
-                    # locks are left in place
-                    # self.make_readonly()
-                    # commented out because I think this is taken care of my context managers now
-                if not exclude_case:
-                    raise
-                raise ValidationError(
-                    f"{self.__class__.__name__} object did not pass schema validation: "
-                    f"{e.message}"
-                )
-            _LOGGER.debug("Validated successfully")
+        :param dict schema: a schema object to use to validate, it overrides the one
+            that has been provided at object construction stage
+        :param bool exclude_case: whether to exclude validated objects
+            from the error. Useful when used with large configs
+        """
+        try:
+            _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
+        except ValidationError as e:
+            _LOGGER.error(
+                f"{self.__class__.__name__} object did not pass schema validation"
+            )
+            # if getattr(self, FILEPATH_KEY, None) is not None:
+            # need to unlock locked files in case of validation error so that no
+            # locks are left in place
+            # self.make_readonly()
+            # commented out because I think this is taken care of my context managers now
+            if not exclude_case:
+                raise
+            raise ValidationError(
+                f"{self.__class__.__name__} object did not pass schema validation: "
+                f"{e.message}"
+            )
+        _LOGGER.debug("Validated successfully")
 
-
-    @ensure_locked
+    @ensure_locked(WRITE)
     def write(self, schema=None, exclude_case=False):
         """
         Write the contents to the file backing this object.
@@ -350,18 +268,18 @@ class YAMLConfigManager(MutableMapping):
             or when writing to a file that is locked by a different object
         :return str: the path to the created files
         """
-        if not self.filepath:
+        if not self.locker.filepath:
             raise OSError("Must provide a filepath to write.")
 
-        _check_filepath(self.filepath)
-        _LOGGER.debug(f"Writing to file '{self.filepath}'")
-        with open(self.filepath, "w") as f:
+        _check_filepath(self.locker.filepath)
+        _LOGGER.debug(f"Writing to file '{self.locker.filepath}'")
+        with open(self.locker.filepath, "w") as f:
             f.write(self.to_yaml())
 
         if schema is not None or self.validate_on_write:
             self.validate(schema=schema, exclude_case=exclude_case)
 
-        abs_path = os.path.abspath(self.filepath)
+        abs_path = os.path.abspath(self.locker.filepath)
         _LOGGER.debug(f"Wrote to a file: {abs_path}")
         return os.path.abspath(abs_path)
 

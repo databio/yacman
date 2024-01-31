@@ -21,11 +21,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
     def __init__(
         self,
         entries=None,
-        filepath=None,
-        yamldata=None,
-        locked=False,
         wait_max=DEFAULT_WAIT_TIME,
-        skip_read_lock=False,
         aliases=None,
         exact=False,
         aliases_strict=None,
@@ -52,11 +48,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
 
         super(AliasedYAMLConfigManager, self).__init__(
             entries=entries,
-            filepath=filepath,
-            yamldata=yamldata,
-            locked=locked,
             wait_max=wait_max,
-            skip_read_lock=skip_read_lock,
         )
         setattr(self, ALIASES_KEY_RAW, {})
         if not exact:
