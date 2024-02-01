@@ -2,4 +2,4 @@ attmap>=0.13.0
 jsonschema>=3.2.0
 oyaml
 pyyaml>=3.13
-ubiquerg>=0.6.1
+ubiquerg>=0.7.0
