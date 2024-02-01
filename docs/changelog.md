@@ -11,6 +11,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - jsonschema validation
 - attmap support
 
+## [0.9.3] -- 2024-02-01
+
+### Added
+- New `FutureYAMLConfigManager` object, prep for v1.
+- Improved file locking system with `read_lock` and `write_lock` context managers
+- New `from_x` object construction API.
+
+
 ## [0.9.2] -- 2023-10-05
 
 ## Added

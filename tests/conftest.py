@@ -1,4 +1,5 @@
 """ Test suite shared objects and setup """
+
 import os
 from glob import glob
 
