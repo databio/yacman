@@ -62,7 +62,7 @@ from collections.abc import MutableMapping
 # itself, which only allows one type of context manager.
 
 
-class YAMLConfigManager(MutableMapping):
+class FutureYAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
     writing, etc.  for YAML configuration files.
