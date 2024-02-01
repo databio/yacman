@@ -211,7 +211,11 @@ class FutureYAMLConfigManager(MutableMapping):
         if fp is not None:
             local_data = self.data
             self.data = load_yaml(fp)
-            deep_update(self.data, local_data)
+            _LOGGER.debug(f"Rebased {local_data} with {self.data} from {fp}")
+            if self.data is None:
+                self.data = local_data
+            else:
+                deep_update(self.data, local_data)
         else:
             _LOGGER.warning("Rebase has no effect if no filepath given")
 
