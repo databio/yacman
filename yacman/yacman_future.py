@@ -191,10 +191,14 @@ class FutureYAMLConfigManager(MutableMapping):
         return self.to_yaml(self.data)
 
     def __enter__(self):
-        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
+        raise NotImplementedError(
+            "Use the 'read_lock' and 'write_lock' context managers."
+        )
 
     def __exit__(self):
-        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
+        raise NotImplementedError(
+            "Use the 'read_lock' and 'write_lock' context managers."
+        )
 
     @ensure_locked(READ)
     def rebase(self, filepath=None):
