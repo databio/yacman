@@ -8,3 +8,58 @@
 Yacman is a YAML configuration manager. It provides some convenience tools for dealing with YAML configuration files.
 
 Please see [this](docs/usage.md) Python notebook for features and usage instructions and [this](docs/api_docs.md) document for API documentation.
+
+## Upgrading guide
+
+How to upgrade to yacman v1.0.0.
+
+There are some transition objects in the 0.9.3 to help with transition.
+
+### Use the FutureYAMLConfigManager in 0.9.3
+
+1. Import the FutureYAMLConfigManager
+
+Change from:
+
+```
+from yacman import YAMLConfigManager
+```
+
+to 
+
+```
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
+```
+
+Once we switch from `v0.9.3` to `v1.X.X`, you will need to switch back.
+
+2. Update any context managers to use `write_lock` or `read_lock`
+
+```
+from yacman import write_lock, read_lock
+```
+
+Change
+
+```
+with ym as locked_ym:
+	locked_ym.write()
+
+```	
+
+to
+
+
+```
+with write_lock(ym) as locked_ym:
+	locked_ym.write()
+```
+
+
+## From v0.9.3 (using future) to v1.X.X:
+
+Switch back to: 
+
+```
+from yacman import YAMLConfigManager
+```
