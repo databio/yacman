@@ -55,6 +55,10 @@ with write_lock(ym) as locked_ym:
 	locked_ym.write()
 ```
 
+3. Update any constructors to use the `from_{x}` functions
+
+You can no longer just create a `YAMLConfigManager` object directly; now you need to use the constructor helpers.
+
 
 ## From v0.9.3 (using future) to v1.X.X:
 
