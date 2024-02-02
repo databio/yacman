@@ -18,10 +18,10 @@ Yacman v1 provides 2 feature upgrades:
 create a new `ym` object.
 2. It separates locks into read locks and write locks, to allow mutliple simultaneous readers.
 
-The v0.9.3 transition release would has versions, really: 
+The `v0.9.3` transition release has 3 versions of the basic yacman object, namely: 
 - attmap-based version (YacAttMap)
 - non-attmap-but-mostly-compatible (YAMLConfigManager)
-- new future object (FutureYAMLConfigManager...), which is not-backwards-compatible.
+- new future object (FutureYAMLConfigManager...), which is explicitly not backwards compatible with the attmap version.
 
 In v1.0.0, FutureYAMLConfigManager will be renamed to YAMLConfigManager and the old stuff will be removed.
 Here's how to transition your code:
