@@ -75,7 +75,7 @@ More examples:
 ```python
 
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
-
+from yacman import read_lock, write_lock
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
 
@@ -89,12 +89,19 @@ ym["my_dict"]
 
 ym["new_var"] = 15
 
+# Use a write-lock, and rebase before writing to ensure you capture any changes since you loaded the file
 with write(ym) as locked_ym:
     locked_ym.rebase()
     locked_ym.write()
 
-with read(ym) as locked_ym:
+
+# use a read lock to rebase -- this will replay any in-memory updates on top of whatever is re-read from the file
+with read_lock(ym) as locked_ym:
     locked_ym.rebase()
+
+# use a read lock to reset the in-memory object to whatever is on disk
+with read_lock(ym) as locked_ym:
+    locked_ym.reset()
 
 ```
 
