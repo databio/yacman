@@ -54,7 +54,7 @@ Change
 
 ```python
 with ym as locked_ym:
-	locked_ym.write()
+    locked_ym.write()
 ```	
 
 to
@@ -62,8 +62,11 @@ to
 
 ```python
 with write_lock(ym) as locked_ym:
-	locked_ym.write()
+    locked_ym.rebase()
+    locked_ym.write()
 ```
+
+In the new system, you must use `rebase()` before `write()` if you want to allow for multiple processes to possibly have written the file since you read it in.
 
 
 
@@ -88,10 +91,10 @@ ym["new_var"] = 15
 
 with write(ym) as locked_ym:
     locked_ym.rebase()
-	locked_ym.write()
+    locked_ym.write()
 
 with read(ym) as locked_ym:
-	locked_ym.rebase()
+    locked_ym.rebase()
 
 ```
 
