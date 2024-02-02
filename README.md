@@ -32,13 +32,13 @@ Here's how to transition your code:
 
 Change from:
 
-```
+```python
 from yacman import YAMLConfigManager
 ```
 
 to 
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ```
 
@@ -46,13 +46,13 @@ Once we switch from `v0.9.3` to `v1.X.X`, you will need to switch back.
 
 2. Update any context managers to use `write_lock` or `read_lock`
 
-```
+```python
 from yacman import write_lock, read_lock
 ```
 
 Change
 
-```
+```python
 with ym as locked_ym:
 	locked_ym.write()
 ```	
@@ -60,7 +60,7 @@ with ym as locked_ym:
 to
 
 
-```
+```python
 with write_lock(ym) as locked_ym:
 	locked_ym.write()
 ```
@@ -69,7 +69,7 @@ with write_lock(ym) as locked_ym:
 
 More examples:
 
-```
+```python
 
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 
@@ -104,7 +104,7 @@ You can no longer just create a `YAMLConfigManager` object directly; now you nee
 
 Examples:
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
@@ -120,14 +120,14 @@ yacman.YAMLConfigManager.from_obj(data)
 In the past, you could load from a file and overwrite some attributes with a dict of variables, all from the constructor.
 Now it would is more explicit:
 
-```
+```python
 ym = yacman.YacMan.from_yaml_file(file_path)
 ym.update_from_obj(data)
 ```
 
 To exppand environment variables in values, use `.exp`.
 
-```
+```python
 ym.exp["text_expand_home_dir"]
 ```
 
@@ -147,7 +147,7 @@ from yacman import YAMLConfigManager
 
 Some interactive demos
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ym = yacman.YAMLConfigManager(entries=["a", "b", "c"])
 ym.to_dict()
