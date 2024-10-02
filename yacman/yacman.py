@@ -66,6 +66,8 @@ if sys.version_info < (3, 7):
 # End hack
 
 
+# from typing_extensions import deprecated
+# @deprecated
 class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and race-free

@@ -63,7 +63,8 @@ def ensure_locked(func):
 
     return inner_func
 
-
+from typing_extensions import deprecated
+@deprecated
 class YAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
