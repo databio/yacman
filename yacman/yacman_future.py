@@ -158,9 +158,13 @@ class FutureYAMLConfigManager(MutableMapping):
         entries = yaml.load(file_contents, yaml.SafeLoader)
         ref = cls(entries, **kwargs)
         ref.locker = ThreeLocker(filepath)
+        ref.filepath = filepath
         return ref
 
     def update_from_yaml_file(self, filepath=None):
+        if filepath is not None:  # set filepath to update filepath if uninitialized
+            if self.filepath is not None:
+                self.filepath = filepath  
         self.data.update(load_yaml(filepath))
         return
 
