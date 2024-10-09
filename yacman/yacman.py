@@ -439,32 +439,64 @@ def _warn_deprecated(obj):
 def load_yaml(filepath):
     """Load a yaml file into a python dict"""
 
-    def read_yaml_file(filepath):
-        """
-        Read a YAML file
+def load_yaml(filepath: Union[str, Path]) -> dict:
+    """
+    Load a local or remote YAML file into a Python dict
 
-        :param str filepath: path to the file to read
-        :return dict: read data
-        """
-        with open(filepath, "r") as f:
+    :param str filepath: path to the file to read
+    :raises ConnectionError: if the remote YAML file reading fails
+    :return dict: loaded yaml data
+    """
+    if is_url(filepath):
+        _LOGGER.debug(f"Got URL: {filepath}")
+        try:
+            response = urlopen(filepath)
+        except Exception as e:
+            raise ConnectionError(
+                f"Could not load remote file: {filepath}. "
+                f"Original exception: {getattr(e, 'message', repr(e))}"
+            )
+        else:
+            data = response.read().decode("utf-8")
+            return yaml.safe_load(data)
+    else:
+        with open(os.path.abspath(filepath), "r") as f:
             data = yaml.safe_load(f)
         return data
 
-    if is_url(filepath):
-        _LOGGER.debug(f"Got URL: {filepath}")
-        try:  # python3
-            from urllib.error import HTTPError
-            from urllib.request import urlopen
-        except:  # python2
-            from urllib2 import URLError as HTTPError
-            from urllib2 import urlopen
-        try:
-            response = urlopen(filepath)
-        except HTTPError as e:
-            raise e
-        data = response.read()  # a `bytes` object
-        text = data.decode("utf-8")
-        return yaml.safe_load(text)
+
+def select_config(
+    config_filepath: str = None,
+    config_env_vars=None,
+    default_config_filepath: str = None,
+    check_exist: bool = True,
+    on_missing=lambda fp: IOError(fp),
+    strict_env: bool = False,
+    config_name=None,
+) -> str:
+    """
+    Selects the config file to load.
+
+    This uses a priority ordering to first choose a config filepath if it's given,
+    but if not, then look in a priority list of environment variables and choose
+    the first available filepath to return.
+
+    :param str | NoneType config_filepath: direct filepath specification
+    :param Iterable[str] | NoneType config_env_vars: names of environment
+        variables to try for config filepaths
+    :param str default_config_filepath: default value if no other alternative
+        resolution succeeds
+    :param bool check_exist: whether to check for path existence as file
+    :param function(str) -> object on_missing: what to do with a filepath if it
+        doesn't exist
+    :param bool strict_env: whether to raise an exception if no file path provided
+        and environment variables do not point to any files
+    raise: OSError: when strict environment variables validation is not passed
+    """
+
+    # First priority: given file
+    if type(config_name) is str:
+        config_name = f"{config_name} "
     else:
         return read_yaml_file(filepath)
 
