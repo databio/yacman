@@ -67,7 +67,7 @@ if sys.version_info < (3, 7):
 
 
 # from typing_extensions import deprecated
-# @deprecated
+# @deprecated("YacAttMap is deprecated. Use YAMLConfigManager instead.")
 class YacAttMap(attmap.PathExAttMap):
     """
     A class that extends AttMap to provide yaml reading and race-free
@@ -162,8 +162,12 @@ class YacAttMap(attmap.PathExAttMap):
             self.validate()
 
     def __del__(self):
-        if hasattr(self[IK], FILEPATH_KEY) and not getattr(self[IK], RO_KEY, True):
-            self.make_readonly()
+        try:
+            if hasattr(self[IK], FILEPATH_KEY) and not getattr(self[IK], RO_KEY, True):
+                self.make_readonly()
+        except KeyError:
+            # The __internal key may not exist during garbage collection
+            pass
 
     def __repr__(self):
         # Here we want to render the data in a nice way; and we want to indicate
