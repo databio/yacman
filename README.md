@@ -18,10 +18,10 @@ Yacman v1 provides 2 feature upgrades:
 create a new `ym` object.
 2. It separates locks into read locks and write locks, to allow mutliple simultaneous readers.
 
-The v0.9.3 transition release would has versions, really: 
+The `v0.9.3` transition release has 3 versions of the basic yacman object, namely: 
 - attmap-based version (YacAttMap)
 - non-attmap-but-mostly-compatible (YAMLConfigManager)
-- new future object (FutureYAMLConfigManager...), which is not-backwards-compatible.
+- new future object (FutureYAMLConfigManager...), which is explicitly not backwards compatible with the attmap version.
 
 In v1.0.0, FutureYAMLConfigManager will be renamed to YAMLConfigManager and the old stuff will be removed.
 Here's how to transition your code:
@@ -32,13 +32,13 @@ Here's how to transition your code:
 
 Change from:
 
-```
+```python
 from yacman import YAMLConfigManager
 ```
 
 to 
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ```
 
@@ -46,33 +46,36 @@ Once we switch from `v0.9.3` to `v1.X.X`, you will need to switch back.
 
 2. Update any context managers to use `write_lock` or `read_lock`
 
-```
+```python
 from yacman import write_lock, read_lock
 ```
 
 Change
 
-```
+```python
 with ym as locked_ym:
-	locked_ym.write()
+    locked_ym.write()
 ```	
 
 to
 
 
-```
+```python
 with write_lock(ym) as locked_ym:
-	locked_ym.write()
+    locked_ym.rebase()
+    locked_ym.write()
 ```
+
+In the new system, you must use `rebase()` before `write()` if you want to allow for multiple processes to possibly have written the file since you read it in.
 
 
 
 More examples:
 
-```
+```python
 
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
-
+from yacman import read_lock, write_lock
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
 
@@ -86,12 +89,19 @@ ym["my_dict"]
 
 ym["new_var"] = 15
 
+# Use a write-lock, and rebase before writing to ensure you capture any changes since you loaded the file
 with write(ym) as locked_ym:
     locked_ym.rebase()
-	locked_ym.write()
+    locked_ym.write()
 
-with read(ym) as locked_ym:
-	locked_ym.rebase()
+
+# use a read lock to rebase -- this will replay any in-memory updates on top of whatever is re-read from the file
+with read_lock(ym) as locked_ym:
+    locked_ym.rebase()
+
+# use a read lock to reset the in-memory object to whatever is on disk
+with read_lock(ym) as locked_ym:
+    locked_ym.reset()
 
 ```
 
@@ -104,7 +114,7 @@ You can no longer just create a `YAMLConfigManager` object directly; now you nee
 
 Examples:
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
@@ -120,14 +130,14 @@ yacman.YAMLConfigManager.from_obj(data)
 In the past, you could load from a file and overwrite some attributes with a dict of variables, all from the constructor.
 Now it would is more explicit:
 
-```
+```python
 ym = yacman.YacMan.from_yaml_file(file_path)
 ym.update_from_obj(data)
 ```
 
 To exppand environment variables in values, use `.exp`.
 
-```
+```python
 ym.exp["text_expand_home_dir"]
 ```
 
@@ -147,7 +157,7 @@ from yacman import YAMLConfigManager
 
 Some interactive demos
 
-```
+```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ym = yacman.YAMLConfigManager(entries=["a", "b", "c"])
 ym.to_dict()
