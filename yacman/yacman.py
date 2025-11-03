@@ -1,8 +1,9 @@
 import logging
 import os
 import warnings
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from sys import _getframe
+from urllib.request import urlopen
 from warnings import warn
 
 import attmap
@@ -49,20 +50,6 @@ if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
     yaml.SafeLoader.construct_mapping = my_construct_mapping
     yaml.SafeLoader.patched_yaml_loader = True
 
-
-import sys
-
-if sys.version_info < (3, 7):
-
-    def my_construct_pairs(self, node, deep=False):
-        pairs = []
-        for key_node, value_node in node.value:
-            key = str(self.construct_object(key_node, deep=deep))
-            value = self.construct_object(value_node, deep=deep)
-            pairs.append((key, value))
-        return pairs
-
-    yaml.SafeLoader.construct_pairs = my_construct_pairs
 # End hack
 
 
