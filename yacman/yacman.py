@@ -5,7 +5,6 @@ import yaml
 from collections.abc import Iterable, Mapping
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
-from sys import _getframe
 from ubiquerg import (
     expandpath,
     is_url,
@@ -62,7 +61,7 @@ from collections.abc import MutableMapping
 # itself, which only allows one type of context manager.
 
 
-class FutureYAMLConfigManager(MutableMapping):
+class YAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
     writing, etc.  for YAML configuration files.
@@ -158,9 +157,13 @@ class FutureYAMLConfigManager(MutableMapping):
         entries = yaml.load(file_contents, yaml.SafeLoader)
         ref = cls(entries, **kwargs)
         ref.locker = ThreeLocker(filepath)
+        ref.filepath = filepath
         return ref
 
     def update_from_yaml_file(self, filepath=None):
+        if filepath is not None:  # set filepath to update filepath if uninitialized
+            if self.filepath is not None:
+                self.filepath = filepath
         self.data.update(load_yaml(filepath))
         return
 
@@ -183,7 +186,7 @@ class FutureYAMLConfigManager(MutableMapping):
         }
 
     def __del__(self):
-        if self.locker:
+        if hasattr(self, "locker"):
             del self.locker
 
     def __repr__(self):
@@ -191,10 +194,14 @@ class FutureYAMLConfigManager(MutableMapping):
         return self.to_yaml(self.data)
 
     def __enter__(self):
-        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
+        raise NotImplementedError(
+            "Use the 'read_lock' and 'write_lock' context managers."
+        )
 
     def __exit__(self):
-        raise NotImplementedError("Use the 'read_lock' and 'write_lock' context managers.")
+        raise NotImplementedError(
+            "Use the 'read_lock' and 'write_lock' context managers."
+        )
 
     @ensure_locked(READ)
     def rebase(self, filepath=None):
@@ -207,7 +214,11 @@ class FutureYAMLConfigManager(MutableMapping):
         if fp is not None:
             local_data = self.data
             self.data = load_yaml(fp)
-            deep_update(self.data, local_data)
+            _LOGGER.debug(f"Rebased {local_data} with {self.data} from {fp}")
+            if self.data is None:
+                self.data = local_data
+            else:
+                deep_update(self.data, local_data)
         else:
             _LOGGER.warning("Rebase has no effect if no filepath given")
 
@@ -426,20 +437,7 @@ def _check_filepath(filepath):
     return filepath
 
 
-def _warn_deprecated(obj):
-    fun_name = _getframe().f_back.f_code.co_name
-    warnings.warn(
-        f"The '{fun_name}' property is deprecated and will be removed in a future release."
-        f' Use {obj.__class__.__name__}["{IK}"]["{fun_name}"] instead.',
-        UserWarning,
-        stacklevel=4,
-    )
-
-
-def load_yaml(filepath):
-    """Load a yaml file into a python dict"""
-
-def load_yaml(filepath: Union[str, Path]) -> dict:
+def load_yaml(filepath: str) -> dict:
     """
     Load a local or remote YAML file into a Python dict
 
@@ -449,6 +447,7 @@ def load_yaml(filepath: Union[str, Path]) -> dict:
     """
     if is_url(filepath):
         _LOGGER.debug(f"Got URL: {filepath}")
+        from urllib.request import urlopen
         try:
             response = urlopen(filepath)
         except Exception as e:
@@ -456,49 +455,12 @@ def load_yaml(filepath: Union[str, Path]) -> dict:
                 f"Could not load remote file: {filepath}. "
                 f"Original exception: {getattr(e, 'message', repr(e))}"
             )
-        else:
-            data = response.read().decode("utf-8")
-            return yaml.safe_load(data)
+        data = response.read().decode("utf-8")
+        return yaml.safe_load(data)
     else:
         with open(os.path.abspath(filepath), "r") as f:
             data = yaml.safe_load(f)
         return data
-
-
-def select_config(
-    config_filepath: str = None,
-    config_env_vars=None,
-    default_config_filepath: str = None,
-    check_exist: bool = True,
-    on_missing=lambda fp: IOError(fp),
-    strict_env: bool = False,
-    config_name=None,
-) -> str:
-    """
-    Selects the config file to load.
-
-    This uses a priority ordering to first choose a config filepath if it's given,
-    but if not, then look in a priority list of environment variables and choose
-    the first available filepath to return.
-
-    :param str | NoneType config_filepath: direct filepath specification
-    :param Iterable[str] | NoneType config_env_vars: names of environment
-        variables to try for config filepaths
-    :param str default_config_filepath: default value if no other alternative
-        resolution succeeds
-    :param bool check_exist: whether to check for path existence as file
-    :param function(str) -> object on_missing: what to do with a filepath if it
-        doesn't exist
-    :param bool strict_env: whether to raise an exception if no file path provided
-        and environment variables do not point to any files
-    raise: OSError: when strict environment variables validation is not passed
-    """
-
-    # First priority: given file
-    if type(config_name) is str:
-        config_name = f"{config_name} "
-    else:
-        return read_yaml_file(filepath)
 
 
 def select_config(

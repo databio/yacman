@@ -7,8 +7,7 @@ from argparse import ArgumentParser
 from random import random
 from time import sleep
 
-from yacman import YacAttMap
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 from yacman import write_lock
 
 import logging

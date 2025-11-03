@@ -4,10 +4,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [1.0.0] -- Unreleased
 
-## Fixed
-- simplified dependencies
+### Changed
+- Renamed `FutureYAMLConfigManager` to `YAMLConfigManager` (the "future" is now!)
 
-## Removed
+### Fixed
+- Simplified dependencies
+- Removed deprecated code (`IK` constant, `_warn_deprecated` function)
+- Removed deprecated properties (`alias_dict`, `_raw_alias_dict`)
+
+### Removed
 - jsonschema validation
 - attmap support
 

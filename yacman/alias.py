@@ -5,7 +5,7 @@ from warnings import warn
 
 from .const import *
 from .exceptions import *
-from .yacman import YAMLConfigManager, _warn_deprecated
+from .yacman import YAMLConfigManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,27 +150,6 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         else:
             # alias was used, try to delete the alias
             super(AliasedYAMLConfigManager, self).__delitem__(key=alias_key)
-
-    @property
-    def alias_dict(self):
-        """
-        Get the alias mapping bound to the object
-
-        :return dict: alias-key mapping (one to one)
-        """
-        _warn_deprecated(obj=self)
-        return getattr(self, ALIASES_KEY)
-
-    @property
-    def _raw_alias_dict(self):
-        """
-        Get the raw alias mapping provided at the object construction.
-        It is not updated, so it should not be used to the key-alias lookup
-
-        :return dict: key-aliases mapping (one to many)
-        """
-        _warn_deprecated(obj=self)
-        return getattr(self, ALIASES_KEY_RAW)
 
     def get_aliases(self, key):
         """
