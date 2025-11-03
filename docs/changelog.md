@@ -11,6 +11,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - jsonschema validation
 - attmap support
 
+## [0.9.4] -- 2025-11-03
+
+### Added
+- Python 3.13 support
+
+### Fixed
+- Missing import for `urlopen` from `urllib.request`
+- Missing import for `Mapping` from `collections.abc`
+
+### Removed
+- Deprecated Python < 3.7 compatibility code
+
 ## [0.9.3] -- 2024-02-01
 
 ### Added

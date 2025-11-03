@@ -1,5 +1,6 @@
 # ignore test results
 tests/test/*
+locking_tests/test.yaml
 
 # toy/experimental files
 *.csv
