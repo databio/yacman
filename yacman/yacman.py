@@ -413,7 +413,6 @@ def _check_filepath(filepath):
     return filepath
 
 
-
 def load_yaml(filepath: Union[str, Path]) -> dict:
     """
     Load a local or remote YAML file into a Python dict
