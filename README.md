@@ -25,7 +25,7 @@ If you were using `FutureYAMLConfigManager` in v0.9.3, simply update your import
 Change from:
 
 ```python
-from yacman import YAMLConfigManager
+from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ```
 
 to:

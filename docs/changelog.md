@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 - Renamed `FutureYAMLConfigManager` to `YAMLConfigManager` (the "future" is now!)
+- `FutureYAMLConfigManager` is still available as a deprecated alias with a warning (will be removed in v1.1.0)
 
 ### Fixed
 - Simplified dependencies
