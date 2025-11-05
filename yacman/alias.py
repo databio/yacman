@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Mapping
 from inspect import getfullargspec
+from typing import Callable
 from warnings import warn
 
 from .const import *
@@ -19,12 +20,12 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
 
     def __init__(
         self,
-        entries=None,
-        wait_max=DEFAULT_WAIT_TIME,
-        aliases=None,
-        exact=False,
-        aliases_strict=None,
-    ):
+        entries: dict[str, object] | None = None,
+        wait_max: int = DEFAULT_WAIT_TIME,
+        aliases: dict[str, list[str]] | Callable | None = None,
+        exact: bool = False,
+        aliases_strict: bool | None = None,
+    ) -> None:
         """Object constructor.
 
         Args:
@@ -85,7 +86,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             for alias in v:
                 getattr(self, ALIASES_KEY)[alias] = k
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> object:
         """Get item by key or alias.
 
         This item accession method will try to access the value by a literal
@@ -102,20 +103,16 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             KeyError: If neither the key nor its alias is defined.
         """
         try:
-            return super(AliasedYAMLConfigManager, self).__getitem__(
-                item=item,
-            )
+            return super(AliasedYAMLConfigManager, self).__getitem__(item)
         except KeyError:
             try:
                 key = self.get_key(item)
             except UndefinedAliasError:
                 raise KeyError(item)
             else:
-                return super(AliasedYAMLConfigManager, self).__getitem__(
-                    item=key,
-                )
+                return super(AliasedYAMLConfigManager, self).__getitem__(key)
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         """Check if key or alias exists in the object.
 
         This containment verification method will first try the literal key.
@@ -128,6 +125,8 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         Returns:
             True if the key or alias exists, False otherwise.
         """
+        if not isinstance(key, str):
+            return False
         try:
             self.__getitem__(key)
         except (UndefinedAliasError, KeyError):
@@ -145,7 +144,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         else:
             return True
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         """Delete item by key or alias.
 
         This item deletion method will try to remove the item by the literal
@@ -159,12 +158,12 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             alias_key = self.get_key(alias=key)
         except (UndefinedAliasError, KeyError):
             # alias was not used, try to delete the literal key
-            super(AliasedYAMLConfigManager, self).__delitem__(key=key)
+            super(AliasedYAMLConfigManager, self).__delitem__(key)
         else:
             # alias was used, try to delete the alias
-            super(AliasedYAMLConfigManager, self).__delitem__(key=alias_key)
+            super(AliasedYAMLConfigManager, self).__delitem__(alias_key)
 
-    def get_aliases(self, key):
+    def get_aliases(self, key: str) -> list[str]:
         """Get the alias for key in the object.
 
         Args:
@@ -185,7 +184,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return aliases
         raise UndefinedAliasError("No alias defined for: {}".format(key))
 
-    def get_key(self, alias):
+    def get_key(self, alias: str) -> str:
         """Get the key for alias in the object.
 
         Args:
@@ -210,7 +209,9 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return getattr(self, ALIASES_KEY)[alias]
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
-    def set_aliases(self, key, aliases, overwrite=False, reset_key=False):
+    def set_aliases(
+        self, key: str, aliases: str | list[str], overwrite: bool = False, reset_key: bool = False
+    ) -> tuple[list[str], list[str]]:
         """Assign an alias to a key in the object.
 
         Args:
@@ -234,8 +235,11 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
                     del getattr(self, ALIASES_KEY)[a]
                     removed_aliases.append(a)
 
-        set_aliases = []
-        for alias in _make_list_of_aliases(aliases):
+        set_aliases: list[str] = []
+        aliases_list = _make_list_of_aliases(aliases)
+        if aliases_list is None:
+            return set_aliases, removed_aliases
+        for alias in aliases_list:
             if alias in getattr(self, ALIASES_KEY):
                 if overwrite:
                     getattr(self, ALIASES_KEY)[alias] = key
@@ -246,7 +250,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
         return set_aliases, removed_aliases
 
-    def remove_aliases(self, key, aliases=None):
+    def remove_aliases(self, key: str, aliases: str | list[str] | None = None) -> list[str]:
         """Remove an alias from the object.
 
         Args:
@@ -257,16 +261,16 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         Returns:
             List of removed aliases.
         """
-        removed = []
-        aliases = _make_list_of_aliases(aliases)
+        removed: list[str] = []
+        aliases_list = _make_list_of_aliases(aliases)
         try:
             current_aliases = self.get_aliases(key)
         except UndefinedAliasError:
             return removed
         else:
             existing_aliases = (
-                list(set(aliases) & set(current_aliases))
-                if aliases
+                list(set(aliases_list) & set(current_aliases))
+                if aliases_list
                 else current_aliases
             )
             for alias in existing_aliases:
@@ -275,7 +279,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return removed
 
 
-def is_aliases_mapping_valid(aliases, strictness=None):
+def is_aliases_mapping_valid(aliases: object, strictness: bool | None = None) -> bool:
     """Determine if the aliases mapping is formatted properly.
 
     The expected format is {"k": ["v"]}, where keys map to lists of aliases.
@@ -295,7 +299,7 @@ def is_aliases_mapping_valid(aliases, strictness=None):
     return False
 
 
-def _make_list_of_aliases(aliases):
+def _make_list_of_aliases(aliases: str | list[str] | None) -> list[str] | None:
     """Check and/or produce a proper aliases input.
 
     Args:
@@ -308,8 +312,8 @@ def _make_list_of_aliases(aliases):
         AliasError: If the input format does not meet the requirements.
     """
 
-    def _raise_alias_class(x):
-        raise AliasError(
+    def _raise_alias_class(x: object) -> AliasError:
+        return AliasError(
             "A string or a list of strings is required, "
             "got: {}".format(x.__class__.__name__)
         )
@@ -319,13 +323,14 @@ def _make_list_of_aliases(aliases):
     if isinstance(aliases, str):
         aliases = [aliases]
     elif isinstance(aliases, list):
-        assert all([isinstance(x, str) for x in aliases]), _raise_alias_class(aliases)
+        if not all([isinstance(x, str) for x in aliases]):
+            raise _raise_alias_class(aliases)
     else:
-        _raise_alias_class(aliases)
+        raise _raise_alias_class(aliases)
     return aliases
 
 
-def _emit_msg(strictness, msg):
+def _emit_msg(strictness: bool | None, msg: str) -> None:
     """Emit a message based on the selected strictness level.
 
     Args:

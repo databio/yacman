@@ -1,0 +1,20 @@
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+
+# Type-checked files
+files = [
+    "yacman/const.py",
+    "yacman/exceptions.py",
+    "yacman/alias.py",
+    "yacman/yacman.py",
+    "yacman/__init__.py"
+]
+
+# Ignore missing imports for external packages
+[[tool.mypy.overrides]]
+module = "ubiquerg"
+ignore_missing_imports = true

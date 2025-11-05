@@ -2,7 +2,9 @@ import logging
 import os
 import yaml
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterator, Mapping
+from pathlib import Path
+from typing import Callable
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
 from ubiquerg import (
@@ -43,9 +45,9 @@ if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
             for key in data
         }
 
-    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping
-    yaml.SafeLoader.construct_mapping = my_construct_mapping
-    yaml.SafeLoader.patched_yaml_loader = True
+    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping  # type: ignore[attr-defined]
+    yaml.SafeLoader.construct_mapping = my_construct_mapping  # type: ignore[method-assign]
+    yaml.SafeLoader.patched_yaml_loader = True  # type: ignore[attr-defined]
 
 # Constants: to do, remove these
 
@@ -69,12 +71,12 @@ class YAMLConfigManager(MutableMapping):
 
     def __init__(
         self,
-        entries=None,
-        wait_max=DEFAULT_WAIT_TIME,
-        strict_ro_locks=False,
-        schema_source=None,
-        validate_on_write=False,
-    ):
+        entries: dict[str, object] | None = None,
+        wait_max: int = DEFAULT_WAIT_TIME,
+        strict_ro_locks: bool = False,
+        schema_source: str | Path | None = None,
+        validate_on_write: bool = False,
+    ) -> None:
         """Object constructor.
 
         Args:
@@ -102,6 +104,7 @@ class YAMLConfigManager(MutableMapping):
         self.locker = None
 
         # We store the values in a dict under .data
+        self.data: dict[str, object]
         if isinstance(entries, list):
             self.data = entries
         else:
@@ -120,7 +123,7 @@ class YAMLConfigManager(MutableMapping):
             self.validate()
 
     @classmethod
-    def from_obj(cls, entries: object, **kwargs):
+    def from_obj(cls, entries: dict[str, object] | None, **kwargs) -> "YAMLConfigManager":
         """Initialize from a Python object (dict, list, or primitive).
 
         Args:
@@ -133,7 +136,7 @@ class YAMLConfigManager(MutableMapping):
         return cls(entries, **kwargs)
 
     @classmethod
-    def from_yaml_data(cls, yamldata, **kwargs):
+    def from_yaml_data(cls, yamldata: str, **kwargs) -> "YAMLConfigManager":
         """Initialize from a YAML string.
 
         Args:
@@ -147,7 +150,7 @@ class YAMLConfigManager(MutableMapping):
         return cls(entries, **kwargs)
 
     @classmethod
-    def from_yaml_file(cls, filepath: str, create_file: bool = False, **kwargs):
+    def from_yaml_file(cls, filepath: str | Path, create_file: bool = False, **kwargs) -> "YAMLConfigManager":
         """Initialize from a YAML file.
 
         Args:
@@ -163,10 +166,10 @@ class YAMLConfigManager(MutableMapping):
         entries = yaml.load(file_contents, yaml.SafeLoader)
         ref = cls(entries, **kwargs)
         ref.locker = ThreeLocker(filepath)
-        ref.filepath = filepath
+        ref.filepath = str(filepath)  # type: ignore[assignment]
         return ref
 
-    def update_from_yaml_file(self, filepath=None):
+    def update_from_yaml_file(self, filepath: str | Path | None = None) -> "YAMLConfigManager":
         """Update the object's data from a YAML file.
 
         Args:
@@ -176,29 +179,42 @@ class YAMLConfigManager(MutableMapping):
         if filepath is not None:  # set filepath to update filepath if uninitialized
             if self.filepath is not None:
                 self.filepath = filepath
-        self.data.update(load_yaml(filepath))
-        return
+            self.data.update(load_yaml(filepath))
+        return self
 
-    def update_from_yaml_data(self, yamldata=None):
+    def update_from_yaml_data(self, yamldata: str | None = None) -> "YAMLConfigManager":
         """Update the object's data from a YAML string.
 
         Args:
             yamldata: YAML-formatted string to update from.
         """
-        self.data.update(yaml.load(yamldata, yaml.SafeLoader))
-        return
+        if yamldata is not None:
+            self.data.update(yaml.load(yamldata, yaml.SafeLoader))
+        return self
 
-    def update_from_obj(self, entries=None):
+    def update_from_obj(self, entries: dict[str, object] | None = None) -> "YAMLConfigManager":
         """Update the object's data from a Python object.
 
         Args:
             entries: Object (dict, list, or primitive) to update from.
         """
-        self.data.update(entries)
-        return
+        if entries is not None:
+            self.data.update(entries)
+        return self
 
     @property
-    def settings(self):
+    def locked(self) -> bool:
+        """Check if the file is currently locked.
+
+        Returns:
+            True if the locker exists and is locked, False otherwise.
+        """
+        if self.locker is None:
+            return False
+        return self.locker.locked
+
+    @property
+    def settings(self) -> dict[str, object]:
         """Get the configuration settings for this object.
 
         Returns:
@@ -213,19 +229,19 @@ class YAMLConfigManager(MutableMapping):
             "strict_ro_locks": self.strict_ro_locks,
         }
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Destructor that cleans up the locker if it exists."""
         if hasattr(self, "locker"):
             del self.locker
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return string representation of the object.
 
         Returns:
             YAML representation of the object's data.
         """
         # Render the data in a nice way
-        return self.to_yaml(self.data)
+        return self.to_yaml()
 
     def __enter__(self):
         """Context manager entry not supported.
@@ -250,7 +266,7 @@ class YAMLConfigManager(MutableMapping):
         )
 
     @ensure_locked(READ)
-    def rebase(self, filepath=None):
+    def rebase(self, filepath: str | Path | None = None) -> "YAMLConfigManager":
         """Reload the object from file, then update with current information.
 
         Args:
@@ -260,6 +276,7 @@ class YAMLConfigManager(MutableMapping):
         Returns:
             Self for chaining.
         """
+        assert self.locker is not None
         fp = filepath or self.locker.filepath
         if fp is not None:
             local_data = self.data
@@ -275,7 +292,7 @@ class YAMLConfigManager(MutableMapping):
         return self
 
     @ensure_locked(READ)
-    def reset(self, filepath=None):
+    def reset(self, filepath: str | Path | None = None) -> "YAMLConfigManager":
         """Reset dict contents to file contents, or to empty dict if no filepath found.
 
         Args:
@@ -285,6 +302,7 @@ class YAMLConfigManager(MutableMapping):
         Returns:
             Self for chaining.
         """
+        assert self.locker is not None
         fp = filepath or self.locker.filepath
         if fp is not None:
             self.data = load_yaml(fp)
@@ -292,7 +310,7 @@ class YAMLConfigManager(MutableMapping):
             self.data = {}
         return self
 
-    def validate(self, schema=None, exclude_case=False):
+    def validate(self, schema: dict[str, object] | None = None, exclude_case: bool = False) -> bool:
         """Validate the object against a schema.
 
         Args:
@@ -322,9 +340,10 @@ class YAMLConfigManager(MutableMapping):
                 f"{e.message}"
             )
         _LOGGER.debug("Validated successfully")
+        return True
 
     @ensure_locked(WRITE)
-    def write(self, schema=None, exclude_case=False):
+    def write(self, schema: dict[str, object] | None = None, exclude_case: bool = False) -> str:
         """Write the contents to the file backing this object.
 
         Args:
@@ -343,6 +362,7 @@ class YAMLConfigManager(MutableMapping):
                 file that is locked by a different object.
             TypeError: When the filepath cannot be determined.
         """
+        assert self.locker is not None
         if not self.locker.filepath:
             raise OSError("Must provide a filepath to write.")
 
@@ -358,7 +378,7 @@ class YAMLConfigManager(MutableMapping):
         _LOGGER.debug(f"Wrote to a file: {abs_path}")
         return os.path.abspath(abs_path)
 
-    def write_copy(self, filepath=None):
+    def write_copy(self, filepath: str | Path) -> str:
         """Write the contents to an external file.
 
         Args:
@@ -371,9 +391,9 @@ class YAMLConfigManager(MutableMapping):
         _LOGGER.debug(f"Writing to file '{filepath}'")
         with open(filepath, "w") as f:
             f.write(self.to_yaml())
-        return filepath
+        return str(filepath)
 
-    def to_yaml(self, trailing_newline=False, expand=False):
+    def to_yaml(self, trailing_newline: bool = False, expand: bool = False) -> str:
         """Get text for YAML representation.
 
         Args:
@@ -390,7 +410,7 @@ class YAMLConfigManager(MutableMapping):
             "\n" if trailing_newline else ""
         )
 
-    def to_dict(self, expand=True):
+    def to_dict(self, expand: bool = True) -> dict[str, object]:
         """Convert the object to a dictionary.
 
         Args:
@@ -404,7 +424,7 @@ class YAMLConfigManager(MutableMapping):
         # but for backwards compatibility.
         return self.data
 
-    def __setitem__(self, item, value):
+    def __setitem__(self, item: str, value: object) -> None:
         """Set a key-value pair in the configuration.
 
         Args:
@@ -413,7 +433,7 @@ class YAMLConfigManager(MutableMapping):
         """
         self.data[item] = value
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> object:
         """Fetch the value of given key.
 
         Args:
@@ -428,7 +448,7 @@ class YAMLConfigManager(MutableMapping):
         return self.data[item]
 
     @property
-    def exp(self) -> dict:
+    def exp(self) -> object:
         """Get data with environment and user variables expanded.
 
         Returns a copy of the object's data elements with env vars and user vars
@@ -439,15 +459,15 @@ class YAMLConfigManager(MutableMapping):
         """
         return _safely_expand_path(self.data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Return an iterator over the configuration keys."""
         return iter(self.data)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the number of configuration entries."""
         return len(self.data)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         """Delete a key-value pair from the configuration.
 
         Args:
@@ -460,11 +480,11 @@ class YAMLConfigManager(MutableMapping):
     def priority_get(
         self,
         arg_name: str,
-        env_var: str = None,
-        default: str = None,
-        override: str = None,
+        env_var: str | None = None,
+        default: str | None = None,
+        override: str | None = None,
         strict: bool = False,
-    ):
+    ) -> str | None:
         """Select a value with priority: override > config > env_var > default.
 
         Helper function to select a value from a config, or, if missing, then
@@ -487,7 +507,9 @@ class YAMLConfigManager(MutableMapping):
         if override:
             return override
         if self.data.get(arg_name) is not None:
-            return self.data[arg_name]
+            result = self.data[arg_name]
+            if isinstance(result, str):
+                return result
         if env_var is not None:
             arg = os.getenv(env_var, None)
             if arg is not None:
@@ -501,6 +523,7 @@ class YAMLConfigManager(MutableMapping):
             )
             _LOGGER.warning(message)
             raise Exception(message)
+        return None
 
 
 # A big issue here is: if you route the __getitem__ through this,
@@ -510,7 +533,7 @@ class YAMLConfigManager(MutableMapping):
 # dict, and so you're updating that copy of it.
 # The solution is that we have to route expansion through a separate property,
 # so the setitem syntax can remain intact while preserving original values.
-def _safely_expand_path(x):
+def _safely_expand_path(x: object) -> object:
     """Recursively expand paths in strings and mappings without modifying originals.
 
     Args:
@@ -527,7 +550,7 @@ def _safely_expand_path(x):
     return x
 
 
-def _unsafely_expand_path(x):
+def _unsafely_expand_path(x: object) -> object:
     """Recursively expand paths in strings and mappings by modifying in place.
 
     Args:
@@ -541,13 +564,13 @@ def _unsafely_expand_path(x):
         return expandpath(x)
     elif isinstance(x, Mapping):
         for k in x.keys():
-            x[k] = _safely_expand_path(x[k])
+            x[k] = _safely_expand_path(x[k])  # type: ignore
         return x
         # return {k: _safely_expand_path(v) for k, v in x.items()}
     return x
 
 
-def _check_filepath(filepath):
+def _check_filepath(filepath: object) -> str:
     """Validate if the filepath is a str.
 
     Args:
@@ -570,7 +593,7 @@ def _check_filepath(filepath):
     return filepath
 
 
-def load_yaml(filepath: str) -> dict:
+def load_yaml(filepath: str | Path) -> dict[str, object]:
     """Load a local or remote YAML file into a Python dict.
 
     Args:
@@ -586,7 +609,7 @@ def load_yaml(filepath: str) -> dict:
         _LOGGER.debug(f"Got URL: {filepath}")
         from urllib.request import urlopen
         try:
-            response = urlopen(filepath)
+            response = urlopen(str(filepath))
         except Exception as e:
             raise ConnectionError(
                 f"Could not load remote file: {filepath}. "
@@ -601,14 +624,14 @@ def load_yaml(filepath: str) -> dict:
 
 
 def select_config(
-    config_filepath: str = None,
-    config_env_vars=None,
-    default_config_filepath: str = None,
+    config_filepath: str | None = None,
+    config_env_vars: str | list[str] | None = None,
+    default_config_filepath: str | None = None,
     check_exist: bool = True,
-    on_missing=lambda fp: IOError(fp),
+    on_missing: Callable[[str], Exception | str] = lambda fp: IOError(fp),
     strict_env: bool = False,
-    config_name=None,
-) -> str:
+    config_name: str | None = None,
+) -> str | None:
     """Select the config file to load using priority ordering.
 
     This uses a priority ordering to first choose a config filepath if it's given,
@@ -670,14 +693,14 @@ def select_config(
         )
 
         for env_var in config_env_vars:
-            result = os.environ.get(env_var, None)
+            result = os.environ.get(env_var)  # type: ignore
             if result == None:
                 _LOGGER.debug(f"Env var '{env_var}' not set.")
                 continue
             elif result == "":
                 _LOGGER.debug(f"Env var '{env_var}' exists, but value is empty.")
                 continue
-            elif not os.path.isfile(result):
+            elif not os.path.isfile(result):  # type: ignore
                 _LOGGER.debug(f"Env var '{env_var}' file not found: {result}")
                 continue
             else:
@@ -698,11 +721,11 @@ def select_config(
             _LOGGER.info(f"Could not locate {config_name}config file.")
             return None
     return (
-        os.path.abspath(selected_filepath) if selected_filepath else selected_filepath
+        os.path.abspath(selected_filepath) if selected_filepath else selected_filepath  # type: ignore
     )
 
 
-def deep_update(old, new):
+def deep_update(old: dict[str, object], new: dict[str, object]) -> dict[str, object]:
     """Recursively update nested dict, modifying source.
 
     Args:
@@ -714,7 +737,7 @@ def deep_update(old, new):
     """
     for key, value in new.items():
         if isinstance(value, Mapping) and value:
-            old[key] = deep_update(old.get(key, {}), value)
+            old[key] = deep_update(old.get(key, {}), value)  # type: ignore
         else:
             old[key] = new[key]
     return old

@@ -4,17 +4,17 @@ This module defines all constant keys and default values used throughout
 the yacman package for configuration management.
 """
 
-FILEPATH_KEY = "file_path"
-RO_KEY = "ro"
-USE_LOCKS_KEY = "locks"
-ORI_STATE_KEY = "ori_state"
-WAIT_MAX_KEY = "wait_time"
-ALIASES_KEY = "aliases"
-ALIASES_KEY_RAW = "aliases_raw"
-WRITE_VALIDATE_KEY = "write_validate"
-SCHEMA_KEY = "schema"
+FILEPATH_KEY: str = "file_path"
+RO_KEY: str = "ro"
+USE_LOCKS_KEY: str = "locks"
+ORI_STATE_KEY: str = "ori_state"
+WAIT_MAX_KEY: str = "wait_time"
+ALIASES_KEY: str = "aliases"
+ALIASES_KEY_RAW: str = "aliases_raw"
+WRITE_VALIDATE_KEY: str = "write_validate"
+SCHEMA_KEY: str = "schema"
 
-ATTR_KEYS = (
+ATTR_KEYS: tuple[str, ...] = (
     USE_LOCKS_KEY,
     FILEPATH_KEY,
     RO_KEY,
@@ -26,6 +26,6 @@ ATTR_KEYS = (
     SCHEMA_KEY,
 )
 
-LOCK_PREFIX = "lock."
-DEFAULT_RO = False
-DEFAULT_WAIT_TIME = 60
+LOCK_PREFIX: str = "lock."
+DEFAULT_RO: bool = False
+DEFAULT_WAIT_TIME: int = 60

@@ -10,7 +10,7 @@ from ubiquerg import read_lock, write_lock
 
 # Deprecated alias for backwards compatibility with v0.9.3 transition period
 # Will be removed in v1.1.0
-def __getattr__(name):
+def __getattr__(name: str) -> object:
     """Handle deprecated FutureYAMLConfigManager attribute access.
 
     This function provides backwards compatibility by redirecting access to
