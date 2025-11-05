@@ -11,8 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AliasedYAMLConfigManager(YAMLConfigManager):
-    """
-    A class that extends YAMLConfigManager to provide alias feature.
+    """A class that extends YAMLConfigManager to provide alias feature.
 
     The items in the object can be accessed using the original key or an alias,
     if defined in the aliases Mapping.
@@ -26,24 +25,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         exact=False,
         aliases_strict=None,
     ):
-        """
-        Object constructor
+        """Object constructor.
 
-        :param Iterable[(str, object)] | Mapping[str, object] entries: YAML
-            collection of key-value pairs.
-        :param str filepath: YAML filepath to the config file.
-        :param str yamldata: YAML-formatted string
-        :param bool locked: whether to initialize as locked (providing write capability)
-        :param int wait_max: how long to wait for creating an object when the
-            file that data will be read from is locked
-        :param bool skip_read_lock: whether the file should not be locked for
-            reading when object is created in read only mode
-        :param Mapping | callable(self) -> Mapping aliases: aliases mapping to
-            use or a callable that produces such a mapping out of the object
-            to set the aliases for
-        :param bool aliases_strict: how to handle aliases mapping issues;
-            None for warning, True for AliasError, False to disregard
-        :param bool exact: whether aliases should not be used, even if defined
+        Args:
+            entries: YAML collection of key-value pairs.
+            wait_max: How long to wait for creating an object when the file
+                that data will be read from is locked.
+            aliases: Aliases mapping to use or a callable that produces such
+                a mapping out of the object to set the aliases for.
+            exact: Whether aliases should not be used, even if defined.
+            aliases_strict: How to handle aliases mapping issues. None for
+                warning, True for AliasError, False to disregard.
         """
 
         super(AliasedYAMLConfigManager, self).__init__(
@@ -94,10 +86,20 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
                 getattr(self, ALIASES_KEY)[alias] = k
 
     def __getitem__(self, item):
-        """
+        """Get item by key or alias.
+
         This item accession method will try to access the value by a literal
         key. If the key is not defined in the object it will try to access the
-        key by it's alias, if defined. If both fail, a KeyError is raised.
+        key by its alias, if defined. If both fail, a KeyError is raised.
+
+        Args:
+            item: The key or alias to look up.
+
+        Returns:
+            The value associated with the key or alias.
+
+        Raises:
+            KeyError: If neither the key nor its alias is defined.
         """
         try:
             return super(AliasedYAMLConfigManager, self).__getitem__(
@@ -114,10 +116,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
                 )
 
     def __contains__(self, key):
-        """
-        This containment verification method will first try the  literal key.
+        """Check if key or alias exists in the object.
+
+        This containment verification method will first try the literal key.
         If the key is not defined in the object it will try to use its alias.
         If both fail, a negative decision is returned; otherwise -- positive.
+
+        Args:
+            key: The key or alias to check for.
+
+        Returns:
+            True if the key or alias exists, False otherwise.
         """
         try:
             self.__getitem__(key)
@@ -137,9 +146,13 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return True
 
     def __delitem__(self, key):
-        """
+        """Delete item by key or alias.
+
         This item deletion method will try to remove the item by the literal
         key or by its alias, if defined.
+
+        Args:
+            key: The key or alias to delete.
         """
         try:
             # check whether an alias was used
@@ -152,15 +165,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             super(AliasedYAMLConfigManager, self).__delitem__(key=alias_key)
 
     def get_aliases(self, key):
-        """
-        Get the alias for key in the object
+        """Get the alias for key in the object.
 
-        :param str key: key to find an alias for
-        :return list[str]: aliases matched by the key
-        :raise GenomeConfigFormatError: if aliases mapping has not been defined
-            for this object
-        :raise UndefinedAliasError: if no alias has been defined for the
-            requested key
+        Args:
+            key: Key to find an alias for.
+
+        Returns:
+            List of aliases matched by the key.
+
+        Raises:
+            UndefinedAliasError: If no alias has been defined for the
+                requested key.
         """
         aliases = []
         for a, k in getattr(self, ALIASES_KEY).items():
@@ -171,15 +186,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         raise UndefinedAliasError("No alias defined for: {}".format(key))
 
     def get_key(self, alias):
-        """
-        Get the key for alias in the object
+        """Get the key for alias in the object.
 
-        :param str alias: alias to find a key for
-        :return str: key match by the alias
-        :raise GenomeConfigFormatError: if aliases mapping has not been defined
-            for this object
-        :raise UndefinedAliasError: if a no key has been defined for the
-            requested alias
+        Args:
+            alias: Alias to find a key for.
+
+        Returns:
+            Key matched by the alias.
+
+        Raises:
+            UndefinedAliasError: If no key has been defined for the
+                requested alias.
         """
         # try:
         #     # first try to use the parent method (doesn't try to use aliases) to
@@ -194,16 +211,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
     def set_aliases(self, key, aliases, overwrite=False, reset_key=False):
-        """
-        Assign an alias to a key in the object.
+        """Assign an alias to a key in the object.
 
-        :param str key: name of the key to assign to an alias for
-        :param str | list[str] aliases: alias to use
-        :param bool overwrite: whether to force overwrite the key for an
-            already defined alias
-        :param bool reset_key: whether to force remove existing aliases
-            for a key
-        :return list[str]: list of set aliases
+        Args:
+            key: Name of the key to assign to an alias for.
+            aliases: Alias or list of aliases to use.
+            overwrite: Whether to force overwrite the key for an already
+                defined alias.
+            reset_key: Whether to force remove existing aliases for a key.
+
+        Returns:
+            Tuple of (list of set aliases, list of removed aliases).
         """
         removed_aliases = []
         if reset_key:
@@ -229,12 +247,15 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         return set_aliases, removed_aliases
 
     def remove_aliases(self, key, aliases=None):
-        """
-        Remove an alias from the object.
+        """Remove an alias from the object.
 
-        :param str key: name of the key to remove
-        :param str aliases: list of aliases to remove
-        :return list[str]: list of removed aliases
+        Args:
+            key: Name of the key to remove aliases for.
+            aliases: List of aliases to remove. If None, removes all aliases
+                for the key.
+
+        Returns:
+            List of removed aliases.
         """
         removed = []
         aliases = _make_list_of_aliases(aliases)
@@ -255,12 +276,17 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
 
 
 def is_aliases_mapping_valid(aliases, strictness=None):
-    """
-    Determine if the aliases mapping is formatted properly, e.g. {"k": ["v"]}
+    """Determine if the aliases mapping is formatted properly.
 
-    :param Mapping[list] aliases: mapping to verify
-    :param bool strictness: how to handle format issues
-    :return bool: whether the mapping adheres to the correct format
+    The expected format is {"k": ["v"]}, where keys map to lists of aliases.
+
+    Args:
+        aliases: Mapping to verify.
+        strictness: How to handle format issues. None for warning, True for
+            AliasError, False to disregard.
+
+    Returns:
+        Whether the mapping adheres to the correct format.
     """
     if isinstance(aliases, Mapping):
         if all([isinstance(v, list) for k, v in aliases.items()]):
@@ -270,12 +296,16 @@ def is_aliases_mapping_valid(aliases, strictness=None):
 
 
 def _make_list_of_aliases(aliases):
-    """
-    Check and/or produce a proper aliases input
+    """Check and/or produce a proper aliases input.
 
-    :param str | list[str] aliases: alias or collection of aliases to check
-    :return list[str]: list of aliases
-    :raise AliasError: if the input format does not meet the requirements
+    Args:
+        aliases: Alias or collection of aliases to check.
+
+    Returns:
+        List of aliases.
+
+    Raises:
+        AliasError: If the input format does not meet the requirements.
     """
 
     def _raise_alias_class(x):
@@ -296,12 +326,11 @@ def _make_list_of_aliases(aliases):
 
 
 def _emit_msg(strictness, msg):
-    """
-    Emit a message based on the selected strictness level
+    """Emit a message based on the selected strictness level.
 
-    :param bool strictness: None for warning, True for AliasError,
-        False for debug log
-    :param str msg: a message to emit
+    Args:
+        strictness: None for warning, True for AliasError, False for debug log.
+        msg: A message to emit.
     """
     if strictness:
         raise AliasError(msg)

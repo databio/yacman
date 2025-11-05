@@ -1,5 +1,7 @@
-"""
-Constant variables for yacman package
+"""Constant variables for yacman package.
+
+This module defines all constant keys and default values used throughout
+the yacman package for configuration management.
 """
 
 FILEPATH_KEY = "file_path"
