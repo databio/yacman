@@ -64,6 +64,8 @@ def ensure_locked(func):
     return inner_func
 
 
+# from typing_extensions import deprecated
+# @deprecated("This YAMLConfigManager is deprecated. Use FutureYAMLConfigManager now. It will be renamed YAMLConfigManager in the next release.")
 class YAMLConfigManager(MutableMapping):
     """
     A YAML configuration manager, providing file locking, loading,
