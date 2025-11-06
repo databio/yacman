@@ -22,32 +22,53 @@ from ._version import __version__
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.debug(f"Using yacman version {__version__}")
 
-# Hack for yaml string indexes
-# Credit: Anthon
-# https://stackoverflow.com/questions/50045617
-# https://stackoverflow.com/questions/5121931
-# The idea is: if you have yaml keys that can be interpreted as an int or a float,
-# then the yaml loader will convert them into an int or a float, and you would
-# need to access them with dict[2] instead of dict['2']. But since we always
-# expect the keys to be strings, this doesn't work. So, here we are adjusting
-# the loader to keep everything as a string.
+# Custom YAML Loader for String Keys
+#
+# We use a custom loader to ensure all dictionary keys are strings, even when
+# they appear as numbers in the YAML source. This provides consistent access
+# patterns: config["2"] always works, even if the YAML has `2: value`.
+#
+# Credit: Based on approach from https://stackoverflow.com/questions/50045617
 
-# Only do once.
-if not hasattr(yaml.SafeLoader, "patched_yaml_loader"):
-    _LOGGER.debug("Patching yaml loader")
 
-    def my_construct_mapping(self, node, deep=False):
-        data = self.construct_mapping_org(node, deep)
-        return {
-            (str(key) if isinstance(key, float) or isinstance(key, int) else key): data[
-                key
-            ]
-            for key in data
-        }
+class YacmanLoader(yaml.SafeLoader):
+    """Custom YAML loader that forces all dict keys to be strings.
 
-    yaml.SafeLoader.construct_mapping_org = yaml.SafeLoader.construct_mapping  # type: ignore[attr-defined]
-    yaml.SafeLoader.construct_mapping = my_construct_mapping  # type: ignore[method-assign]
-    yaml.SafeLoader.patched_yaml_loader = True  # type: ignore[attr-defined]
+    This ensures consistent key access patterns in config files, even when
+    keys look like numbers (e.g., 2, 3.14) in the YAML source.
+
+    Example:
+        YAML source `2: value` loads as {"2": "value"} not {2: "value"}
+    """
+
+    pass
+
+
+def _construct_mapping_string_keys(loader: yaml.Loader, node: yaml.Node) -> dict[str, object]:
+    """Construct a mapping with all keys coerced to strings.
+
+    Args:
+        loader: The YAML loader instance.
+        node: The YAML node to construct.
+
+    Returns:
+        Dictionary with all keys converted to strings.
+    """
+    # Use the parent class's construct_pairs to get key-value tuples
+    loader.flatten_mapping(node)
+    pairs = loader.construct_pairs(node)
+
+    # Convert all numeric keys to strings
+    return {
+        (str(key) if isinstance(key, (int, float)) else key): value
+        for key, value in pairs
+    }
+
+
+# Register the custom constructor for mappings
+YacmanLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping_string_keys
+)
 
 # Constants: to do, remove these
 
@@ -147,7 +168,7 @@ class YAMLConfigManager(MutableMapping):
         Returns:
             New instance of the class.
         """
-        entries = yaml.load(yamldata, yaml.SafeLoader)
+        entries = yaml.load(yamldata, YacmanLoader)
         return cls(entries, **kwargs)
 
     @classmethod
@@ -164,7 +185,7 @@ class YAMLConfigManager(MutableMapping):
         """
 
         file_contents = locked_read_file(filepath, create_file=create_file)
-        entries = yaml.load(file_contents, yaml.SafeLoader)
+        entries = yaml.load(file_contents, YacmanLoader)
         ref = cls(entries, **kwargs)
         ref.locker = ThreeLocker(filepath)
         ref.filepath = str(filepath)
@@ -190,7 +211,7 @@ class YAMLConfigManager(MutableMapping):
             yamldata: YAML-formatted string to update from.
         """
         if yamldata is not None:
-            self.data.update(yaml.load(yamldata, yaml.SafeLoader))
+            self.data.update(yaml.load(yamldata, YacmanLoader))
         return self
 
     def update_from_obj(self, entries: dict[str, Any] | None = None) -> "YAMLConfigManager":
@@ -620,10 +641,10 @@ def load_yaml(filepath: str | Path) -> dict[str, Any]:
                 f"Original exception: {getattr(e, 'message', repr(e))}"
             )
         data = response.read().decode("utf-8")
-        return yaml.safe_load(data)
+        return yaml.load(data, YacmanLoader)
     else:
         with open(os.path.abspath(filepath), "r") as f:
-            data = yaml.safe_load(f)
+            data = yaml.load(f, YacmanLoader)
         return data
 
 
