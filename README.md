@@ -14,35 +14,25 @@ Please see [this](docs/usage.md) Python notebook for features and usage instruct
 How to upgrade to yacman v1.0.0.
 Yacman v1 provides 2 feature upgrades:
 
-1. Constructors take the form of `yacman.YAMLConfigManager.from_x(...)` functions, to make it clearer how to 
+1. Constructors take the form of `yacman.YAMLConfigManager.from_x(...)` functions, to make it clearer how to
 create a new `ym` object.
 2. It separates locks into read locks and write locks, to allow mutliple simultaneous readers.
 
-The `v0.9.3` transition release has 3 versions of the basic yacman object, namely: 
-- attmap-based version (YacAttMap)
-- non-attmap-but-mostly-compatible (YAMLConfigManager)
-- new future object (FutureYAMLConfigManager...), which is explicitly not backwards compatible with the attmap version.
+### Upgrading from v0.9.3 to v1.0.0
 
-In v1.0.0, FutureYAMLConfigManager will be renamed to YAMLConfigManager and the old stuff will be removed.
-Here's how to transition your code:
-
-### Use the FutureYAMLConfigManager in 0.9.3
-
-1. Import the FutureYAMLConfigManager
+If you were using `FutureYAMLConfigManager` in v0.9.3, simply update your imports:
 
 Change from:
-
-```python
-from yacman import YAMLConfigManager
-```
-
-to 
 
 ```python
 from yacman import FutureYAMLConfigManager as YAMLConfigManager
 ```
 
-Once we switch from `v0.9.3` to `v1.X.X`, you will need to switch back.
+to:
+
+```python
+from yacman import YAMLConfigManager
+```
 
 2. Update any context managers to use `write_lock` or `read_lock`
 
@@ -74,7 +64,7 @@ More examples:
 
 ```python
 
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 from yacman import read_lock, write_lock
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
@@ -115,7 +105,7 @@ You can no longer just create a `YAMLConfigManager` object directly; now you nee
 Examples:
 
 ```python
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 
 data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
 file_path = "tests/data/full.yaml"
@@ -158,7 +148,7 @@ from yacman import YAMLConfigManager
 Some interactive demos
 
 ```python
-from yacman import FutureYAMLConfigManager as YAMLConfigManager
+from yacman import YAMLConfigManager
 ym = yacman.YAMLConfigManager(entries=["a", "b", "c"])
 ym.to_dict()
 ym

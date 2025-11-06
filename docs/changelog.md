@@ -2,6 +2,21 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [1.0.0] -- Unreleased
+
+### Changed
+- Renamed `FutureYAMLConfigManager` to `YAMLConfigManager` (the "future" is now!)
+- `FutureYAMLConfigManager` is still available as a deprecated alias with a warning (will be removed in v1.1.0)
+
+### Fixed
+- Simplified dependencies
+- Removed deprecated code (`IK` constant, `_warn_deprecated` function)
+- Removed deprecated properties (`alias_dict`, `_raw_alias_dict`)
+
+### Removed
+- jsonschema validation
+- attmap support
+
 ## [0.9.4] -- 2025-11-03
 
 ### Added
@@ -20,6 +35,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - New `FutureYAMLConfigManager` object, prep for v1.
 - Improved file locking system with `read_lock` and `write_lock` context managers
 - New `from_x` object construction API.
+
 
 ## [0.9.2] -- 2023-10-05
 

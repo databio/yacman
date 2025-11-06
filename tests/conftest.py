@@ -17,6 +17,12 @@ def cfg_file(data_path):
 
 
 @pytest.fixture
+def full_cfg(data_path):
+    """A config file with something in it"""
+    return os.path.join(data_path, "full.yaml")
+
+
+@pytest.fixture
 def schema(data_path):
     return os.path.join(data_path, "conf_schema.yaml")
 
