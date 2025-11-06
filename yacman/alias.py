@@ -210,7 +210,11 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         raise UndefinedAliasError("No key defined for: {}".format(alias))
 
     def set_aliases(
-        self, key: str, aliases: str | list[str], overwrite: bool = False, reset_key: bool = False
+        self,
+        key: str,
+        aliases: str | list[str],
+        overwrite: bool = False,
+        reset_key: bool = False,
     ) -> tuple[list[str], list[str]]:
         """Assign an alias to a key in the object.
 
@@ -250,7 +254,9 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         _LOGGER.debug("Added aliases ({}: {})".format(key, set_aliases))
         return set_aliases, removed_aliases
 
-    def remove_aliases(self, key: str, aliases: str | list[str] | None = None) -> list[str]:
+    def remove_aliases(
+        self, key: str, aliases: str | list[str] | None = None
+    ) -> list[str]:
         """Remove an alias from the object.
 
         Args:

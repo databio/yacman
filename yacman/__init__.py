@@ -31,7 +31,7 @@ def __getattr__(name: str) -> object:
             "FutureYAMLConfigManager is deprecated and will be removed in v1.1.0. "
             "Please use YAMLConfigManager instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return YAMLConfigManager
     raise AttributeError(f"module 'yacman' has no attribute '{name}'")

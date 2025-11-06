@@ -44,7 +44,9 @@ class YacmanLoader(yaml.SafeLoader):
     pass
 
 
-def _construct_mapping_string_keys(loader: yaml.Loader, node: yaml.Node) -> dict[str, object]:
+def _construct_mapping_string_keys(
+    loader: yaml.Loader, node: yaml.Node
+) -> dict[str, object]:
     """Construct a mapping with all keys coerced to strings.
 
     Args:
@@ -128,7 +130,9 @@ class YAMLConfigManager(MutableMapping):
         # Note: entries can be list/dict/etc but data is always dict for MutableMapping protocol
         self.data: dict[str, Any]
         if isinstance(entries, list):
-            self.data = {str(i): v for i, v in enumerate(entries)}  # Convert list to dict
+            self.data = {
+                str(i): v for i, v in enumerate(entries)
+            }  # Convert list to dict
         else:
             self.data = dict(entries or {})
         if schema_source is not None:
@@ -145,7 +149,9 @@ class YAMLConfigManager(MutableMapping):
             self.validate()
 
     @classmethod
-    def from_obj(cls, entries: dict[str, Any] | list[Any] | None, **kwargs) -> "YAMLConfigManager":
+    def from_obj(
+        cls, entries: dict[str, Any] | list[Any] | None, **kwargs
+    ) -> "YAMLConfigManager":
         """Initialize from a Python object (dict, list, or primitive).
 
         Args:
@@ -172,7 +178,9 @@ class YAMLConfigManager(MutableMapping):
         return cls(entries, **kwargs)
 
     @classmethod
-    def from_yaml_file(cls, filepath: str | Path, create_file: bool = False, **kwargs) -> "YAMLConfigManager":
+    def from_yaml_file(
+        cls, filepath: str | Path, create_file: bool = False, **kwargs
+    ) -> "YAMLConfigManager":
         """Initialize from a YAML file.
 
         Args:
@@ -191,7 +199,9 @@ class YAMLConfigManager(MutableMapping):
         ref.filepath = str(filepath)
         return ref
 
-    def update_from_yaml_file(self, filepath: str | Path | None = None) -> "YAMLConfigManager":
+    def update_from_yaml_file(
+        self, filepath: str | Path | None = None
+    ) -> "YAMLConfigManager":
         """Update the object's data from a YAML file.
 
         Args:
@@ -214,7 +224,9 @@ class YAMLConfigManager(MutableMapping):
             self.data.update(yaml.load(yamldata, YacmanLoader))
         return self
 
-    def update_from_obj(self, entries: dict[str, Any] | None = None) -> "YAMLConfigManager":
+    def update_from_obj(
+        self, entries: dict[str, Any] | None = None
+    ) -> "YAMLConfigManager":
         """Update the object's data from a Python object.
 
         Args:
@@ -332,7 +344,9 @@ class YAMLConfigManager(MutableMapping):
             self.data = {}
         return self
 
-    def validate(self, schema: dict[str, Any] | None = None, exclude_case: bool = False) -> bool:
+    def validate(
+        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
+    ) -> bool:
         """Validate the object against a schema.
 
         Args:
@@ -365,7 +379,9 @@ class YAMLConfigManager(MutableMapping):
         return True
 
     @ensure_locked(WRITE)
-    def write(self, schema: dict[str, Any] | None = None, exclude_case: bool = False) -> str:
+    def write(
+        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
+    ) -> str:
         """Write the contents to the file backing this object.
 
         Args:
@@ -633,6 +649,7 @@ def load_yaml(filepath: str | Path) -> dict[str, Any]:
     if is_url(filepath):
         _LOGGER.debug(f"Got URL: {filepath}")
         from urllib.request import urlopen
+
         try:
             response = urlopen(str(filepath))
         except Exception as e:

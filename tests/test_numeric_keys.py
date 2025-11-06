@@ -11,12 +11,14 @@ class TestNumericKeys:
         """Test that numeric keys like 2 and 3.14 become '2' and '3.14'."""
         # Create a YAML file with numeric keys
         yaml_file = tmp_path / "numeric.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 2: second
 3.14: pi
 "4": four_string
 text: regular_value
-""")
+"""
+        )
 
         # Load it with YAMLConfigManager (convert Path to str for locking)
         ym = YAMLConfigManager.from_yaml_file(str(yaml_file))
