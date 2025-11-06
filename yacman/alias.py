@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping
 from inspect import getfullargspec
-from typing import Callable
+from typing import Any, Callable
 from warnings import warn
 
 from .const import *
@@ -20,7 +20,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
 
     def __init__(
         self,
-        entries: dict[str, object] | None = None,
+        entries: dict[str, Any] | list[Any] | None = None,
         wait_max: int = DEFAULT_WAIT_TIME,
         aliases: dict[str, list[str]] | Callable | None = None,
         exact: bool = False,
@@ -279,7 +279,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return removed
 
 
-def is_aliases_mapping_valid(aliases: object, strictness: bool | None = None) -> bool:
+def is_aliases_mapping_valid(aliases: Any, strictness: bool | None = None) -> bool:
     """Determine if the aliases mapping is formatted properly.
 
     The expected format is {"k": ["v"]}, where keys map to lists of aliases.
@@ -312,7 +312,7 @@ def _make_list_of_aliases(aliases: str | list[str] | None) -> list[str] | None:
         AliasError: If the input format does not meet the requirements.
     """
 
-    def _raise_alias_class(x: object) -> AliasError:
+    def _raise_alias_class(x: Any) -> AliasError:
         return AliasError(
             "A string or a list of strings is required, "
             "got: {}".format(x.__class__.__name__)

@@ -4,7 +4,7 @@ import yaml
 
 from collections.abc import Iterator, Mapping
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
 from ubiquerg import (
@@ -71,7 +71,7 @@ class YAMLConfigManager(MutableMapping):
 
     def __init__(
         self,
-        entries: dict[str, object] | None = None,
+        entries: dict[str, Any] | list[Any] | None = None,
         wait_max: int = DEFAULT_WAIT_TIME,
         strict_ro_locks: bool = False,
         schema_source: str | Path | None = None,
@@ -96,17 +96,18 @@ class YAMLConfigManager(MutableMapping):
         """
 
         # Settings for this config object
-        self.filepath = None
-        self.wait_max = wait_max
-        self.schema_source = schema_source
-        self.validate_on_write = validate_on_write
-        self.strict_ro_locks = strict_ro_locks
-        self.locker = None
+        self.filepath: str | None = None
+        self.wait_max: int = wait_max
+        self.schema_source: str | Path | None = schema_source
+        self.validate_on_write: bool = validate_on_write
+        self.strict_ro_locks: bool = strict_ro_locks
+        self.locker: Any = None  # ThreeLocker type not available
 
         # We store the values in a dict under .data
-        self.data: dict[str, object]
+        # Note: entries can be list/dict/etc but data is always dict for MutableMapping protocol
+        self.data: dict[str, Any]
         if isinstance(entries, list):
-            self.data = entries
+            self.data = {str(i): v for i, v in enumerate(entries)}  # Convert list to dict
         else:
             self.data = dict(entries or {})
         if schema_source is not None:
@@ -123,7 +124,7 @@ class YAMLConfigManager(MutableMapping):
             self.validate()
 
     @classmethod
-    def from_obj(cls, entries: dict[str, object] | None, **kwargs) -> "YAMLConfigManager":
+    def from_obj(cls, entries: dict[str, Any] | list[Any] | None, **kwargs) -> "YAMLConfigManager":
         """Initialize from a Python object (dict, list, or primitive).
 
         Args:
@@ -166,7 +167,7 @@ class YAMLConfigManager(MutableMapping):
         entries = yaml.load(file_contents, yaml.SafeLoader)
         ref = cls(entries, **kwargs)
         ref.locker = ThreeLocker(filepath)
-        ref.filepath = str(filepath)  # type: ignore[assignment]
+        ref.filepath = str(filepath)
         return ref
 
     def update_from_yaml_file(self, filepath: str | Path | None = None) -> "YAMLConfigManager":
@@ -177,8 +178,8 @@ class YAMLConfigManager(MutableMapping):
                 the object's filepath is not set, sets the object's filepath.
         """
         if filepath is not None:  # set filepath to update filepath if uninitialized
-            if self.filepath is not None:
-                self.filepath = filepath
+            if self.filepath is None:
+                self.filepath = str(filepath)
             self.data.update(load_yaml(filepath))
         return self
 
@@ -192,7 +193,7 @@ class YAMLConfigManager(MutableMapping):
             self.data.update(yaml.load(yamldata, yaml.SafeLoader))
         return self
 
-    def update_from_obj(self, entries: dict[str, object] | None = None) -> "YAMLConfigManager":
+    def update_from_obj(self, entries: dict[str, Any] | None = None) -> "YAMLConfigManager":
         """Update the object's data from a Python object.
 
         Args:
@@ -214,7 +215,7 @@ class YAMLConfigManager(MutableMapping):
         return self.locker.locked
 
     @property
-    def settings(self) -> dict[str, object]:
+    def settings(self) -> dict[str, Any]:
         """Get the configuration settings for this object.
 
         Returns:
@@ -310,7 +311,7 @@ class YAMLConfigManager(MutableMapping):
             self.data = {}
         return self
 
-    def validate(self, schema: dict[str, object] | None = None, exclude_case: bool = False) -> bool:
+    def validate(self, schema: dict[str, Any] | None = None, exclude_case: bool = False) -> bool:
         """Validate the object against a schema.
 
         Args:
@@ -343,7 +344,7 @@ class YAMLConfigManager(MutableMapping):
         return True
 
     @ensure_locked(WRITE)
-    def write(self, schema: dict[str, object] | None = None, exclude_case: bool = False) -> str:
+    def write(self, schema: dict[str, Any] | None = None, exclude_case: bool = False) -> str:
         """Write the contents to the file backing this object.
 
         Args:
@@ -410,7 +411,7 @@ class YAMLConfigManager(MutableMapping):
             "\n" if trailing_newline else ""
         )
 
-    def to_dict(self, expand: bool = True) -> dict[str, object]:
+    def to_dict(self, expand: bool = True) -> dict[str, Any]:
         """Convert the object to a dictionary.
 
         Args:
@@ -448,7 +449,7 @@ class YAMLConfigManager(MutableMapping):
         return self.data[item]
 
     @property
-    def exp(self) -> object:
+    def exp(self) -> dict[str, Any]:
         """Get data with environment and user variables expanded.
 
         Returns a copy of the object's data elements with env vars and user vars
@@ -506,10 +507,13 @@ class YAMLConfigManager(MutableMapping):
         """
         if override:
             return override
-        if self.data.get(arg_name) is not None:
+        if isinstance(self.data, dict) and self.data.get(arg_name) is not None:
             result = self.data[arg_name]
-            if isinstance(result, str):
-                return result
+            if not isinstance(result, str):
+                raise TypeError(
+                    f"Config value for '{arg_name}' must be a string, got {type(result).__name__}"
+                )
+            return result
         if env_var is not None:
             arg = os.getenv(env_var, None)
             if arg is not None:
@@ -533,7 +537,7 @@ class YAMLConfigManager(MutableMapping):
 # dict, and so you're updating that copy of it.
 # The solution is that we have to route expansion through a separate property,
 # so the setitem syntax can remain intact while preserving original values.
-def _safely_expand_path(x: object) -> object:
+def _safely_expand_path(x: Any) -> Any:
     """Recursively expand paths in strings and mappings without modifying originals.
 
     Args:
@@ -550,7 +554,7 @@ def _safely_expand_path(x: object) -> object:
     return x
 
 
-def _unsafely_expand_path(x: object) -> object:
+def _unsafely_expand_path(x: Any) -> Any:
     """Recursively expand paths in strings and mappings by modifying in place.
 
     Args:
@@ -570,7 +574,7 @@ def _unsafely_expand_path(x: object) -> object:
     return x
 
 
-def _check_filepath(filepath: object) -> str:
+def _check_filepath(filepath: Any) -> str:
     """Validate if the filepath is a str.
 
     Args:
@@ -593,7 +597,7 @@ def _check_filepath(filepath: object) -> str:
     return filepath
 
 
-def load_yaml(filepath: str | Path) -> dict[str, object]:
+def load_yaml(filepath: str | Path) -> dict[str, Any]:
     """Load a local or remote YAML file into a Python dict.
 
     Args:
@@ -725,7 +729,7 @@ def select_config(
     )
 
 
-def deep_update(old: dict[str, object], new: dict[str, object]) -> dict[str, object]:
+def deep_update(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
     """Recursively update nested dict, modifying source.
 
     Args:
