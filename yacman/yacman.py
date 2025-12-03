@@ -416,6 +416,28 @@ class YAMLConfigManager(MutableMapping):
         _LOGGER.debug(f"Wrote to a file: {abs_path}")
         return os.path.abspath(abs_path)
 
+    @ensure_locked(WRITE)
+    def rebase_and_write(
+        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
+    ) -> str:
+        """Rebase from disk and write. Safe for multi-process scenarios.
+
+        This is a convenience method that combines rebase() and write() into
+        a single call. Use this when multiple processes may have written to
+        the file since you read it in.
+
+        Args:
+            schema: A schema object to use to validate. It overrides the one
+                that has been provided at object construction stage.
+            exclude_case: Whether to exclude validated objects from the error.
+                Useful when used with large configs.
+
+        Returns:
+            The absolute path to the written file.
+        """
+        self.rebase()
+        return self.write(schema=schema, exclude_case=exclude_case)
+
     def write_copy(self, filepath: str | Path) -> str:
         """Write the contents to an external file.
 

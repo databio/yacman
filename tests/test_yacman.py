@@ -72,6 +72,41 @@ class TestWriting:
         with read_lock(ym) as locked_ym:
             locked_ym.rebase()
 
+    def test_rebase_and_write(self, tmpdir):
+        """Test that rebase_and_write combines rebase and write correctly."""
+        # Set up a temp file
+        p = tmpdir.mkdir("sub").join("test_rebase_and_write.yaml")
+        p.write("{}")
+        temp_path = str(p)
+
+        # Create two instances pointing to the same file
+        ym1 = yacman.YAMLConfigManager.from_yaml_file(temp_path)
+        ym2 = yacman.YAMLConfigManager.from_yaml_file(temp_path)
+
+        # First process writes a value
+        ym1["key1"] = "value1"
+        with write_lock(ym1) as locked_ym:
+            locked_ym.rebase_and_write()
+
+        # Second process has a different in-memory value
+        ym2["key2"] = "value2"
+
+        # Using rebase_and_write should merge both changes
+        with write_lock(ym2) as locked_ym:
+            locked_ym.rebase_and_write()
+
+        # Verify both keys are present in the file
+        ym_final = yacman.YAMLConfigManager.from_yaml_file(temp_path)
+        assert ym_final["key1"] == "value1"
+        assert ym_final["key2"] == "value2"
+
+    def test_rebase_and_write_requires_lock(self, cfg_file):
+        """Test that rebase_and_write requires a write lock."""
+        ym = yacman.YAMLConfigManager.from_yaml_file(cfg_file)
+
+        with pytest.raises(OSError):
+            ym.rebase_and_write()
+
     def test_read_lock(self, full_cfg, tmp_path):
         tmp_cfg = get_temp_copy(full_cfg, tmp_path)
         ym = yacman.YAMLConfigManager.from_yaml_file(tmp_cfg)

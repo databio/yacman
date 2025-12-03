@@ -52,11 +52,18 @@ to
 
 ```python
 with write_lock(ym) as locked_ym:
+    locked_ym.rebase_and_write()
+```
+
+Or, if you prefer to be more explicit:
+
+```python
+with write_lock(ym) as locked_ym:
     locked_ym.rebase()
     locked_ym.write()
 ```
 
-In the new system, you must use `rebase()` before `write()` if you want to allow for multiple processes to possibly have written the file since you read it in.
+In the new system, you must use `rebase()` before `write()` if you want to allow for multiple processes to possibly have written the file since you read it in. The `rebase_and_write()` convenience method combines these two calls.
 
 
 
@@ -80,7 +87,11 @@ ym["my_dict"]
 ym["new_var"] = 15
 
 # Use a write-lock, and rebase before writing to ensure you capture any changes since you loaded the file
-with write(ym) as locked_ym:
+with write_lock(ym) as locked_ym:
+    locked_ym.rebase_and_write()
+
+# Or, if you want to do it explicitly:
+with write_lock(ym) as locked_ym:
     locked_ym.rebase()
     locked_ym.write()
 
