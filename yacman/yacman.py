@@ -17,10 +17,10 @@ from ubiquerg import (
     locked_read_file,
 )
 
-from ._version import __version__
+from importlib.metadata import version
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.debug(f"Using yacman version {__version__}")
+_LOGGER.debug(f"Using yacman version {version('yacman')}")
 
 # Custom YAML Loader for String Keys
 #

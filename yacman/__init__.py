@@ -3,7 +3,6 @@ import warnings
 from ubiquerg import read_lock as read_lock
 from ubiquerg import write_lock as write_lock
 
-from ._version import __version__ as __version__
 from .alias import AliasedYAMLConfigManager as AliasedYAMLConfigManager
 from .const import *
 from .exceptions import *
