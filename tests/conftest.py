@@ -23,11 +23,6 @@ def full_cfg(data_path):
 
 
 @pytest.fixture
-def schema(data_path):
-    return os.path.join(data_path, "conf_schema.yaml")
-
-
-@pytest.fixture
 def locked_cfg_file(data_path):
     return os.path.join(data_path, "lock.conf.yaml")
 

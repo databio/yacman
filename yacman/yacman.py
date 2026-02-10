@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import yaml
-from jsonschema import validate as _validate
-from jsonschema.exceptions import ValidationError
 from ubiquerg import (
     READ,
     WRITE,
@@ -71,12 +69,7 @@ YacmanLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping_string_keys
 )
 
-# Constants: to do, remove these
-
 DEFAULT_WAIT_TIME = 60
-# LOCK_PREFIX = "lock."
-SCHEMA_KEY = "schema"
-FILEPATH_KEY = "file_path"
 
 # Since read and write are now different context managers, we have to
 # separate them like this, instead of using __enter__ and __exit__ on the class
@@ -94,8 +87,6 @@ class YAMLConfigManager(MutableMapping):
         entries: dict[str, Any] | list[Any] | None = None,
         wait_max: int = DEFAULT_WAIT_TIME,
         strict_ro_locks: bool = False,
-        schema_source: str | Path | None = None,
-        validate_on_write: bool = False,
     ) -> None:
         """Object constructor.
 
@@ -106,20 +97,11 @@ class YAMLConfigManager(MutableMapping):
             strict_ro_locks: By default, we allow RO filesystems that can't
                 be locked. Turn on strict_ro_locks to error if locks cannot
                 be enforced on readonly filesystems.
-            schema_source: Path or a URL to a jsonschema in YAML format to use
-                for optional config validation. If this argument is provided
-                the object is always validated at least once, at the object
-                creation stage.
-            validate_on_write: A boolean indicating whether the object should
-                be validated every time the `write` method is executed, which
-                is a way of preventing invalid config writing.
         """
 
         # Settings for this config object
         self.filepath: str | None = None
         self.wait_max: int = wait_max
-        self.schema_source: str | Path | None = schema_source
-        self.validate_on_write: bool = validate_on_write
         self.strict_ro_locks: bool = strict_ro_locks
         self.locker: Any = None  # ThreeLocker type not available
 
@@ -132,18 +114,6 @@ class YAMLConfigManager(MutableMapping):
             }  # Convert list to dict
         else:
             self.data = dict(entries or {})
-        if schema_source is not None:
-            assert isinstance(schema_source, str), TypeError(
-                "Path to the schema to validate the config must be a string"
-            )
-            sp = expandpath(schema_source)
-            assert os.path.exists(sp), FileNotFoundError(
-                f"Provided schema file does not exist: {schema_source}."
-                f" Also tried: {sp}"
-            )
-            # validate config
-            setattr(self, SCHEMA_KEY, load_yaml(sp))
-            self.validate()
 
     @classmethod
     def from_obj(
@@ -249,13 +219,10 @@ class YAMLConfigManager(MutableMapping):
         """Get the configuration settings for this object.
 
         Returns:
-            Dictionary containing wait_max, schema_source, validate_on_write,
-            locked, and strict_ro_locks settings.
+            Dictionary containing wait_max, locked, and strict_ro_locks settings.
         """
         return {
             "wait_max": self.wait_max,
-            "schema_source": self.schema_source,
-            "validate_on_write": self.validate_on_write,
             "locked": self.locked,
             "strict_ro_locks": self.strict_ro_locks,
         }
@@ -341,51 +308,9 @@ class YAMLConfigManager(MutableMapping):
             self.data = {}
         return self
 
-    def validate(
-        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
-    ) -> bool:
-        """Validate the object against a schema.
-
-        Args:
-            schema: A schema object to use to validate. It overrides the one
-                that has been provided at object construction stage.
-            exclude_case: Whether to exclude validated objects from the error.
-                Useful when used with large configs.
-
-        Raises:
-            ValidationError: If the object does not pass schema validation.
-        """
-        try:
-            _validate(self.to_dict(expand=True), schema or getattr(self, SCHEMA_KEY))
-        except ValidationError as e:
-            _LOGGER.error(
-                f"{self.__class__.__name__} object did not pass schema validation"
-            )
-            # if getattr(self, FILEPATH_KEY, None) is not None:
-            # need to unlock locked files in case of validation error so that no
-            # locks are left in place
-            # self.make_readonly()
-            # commented out because I think this is taken care of my context managers now
-            if not exclude_case:
-                raise
-            raise ValidationError(
-                f"{self.__class__.__name__} object did not pass schema validation: "
-                f"{e.message}"
-            )
-        _LOGGER.debug("Validated successfully")
-        return True
-
     @ensure_locked(WRITE)
-    def write(
-        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
-    ) -> str:
+    def write(self) -> str:
         """Write the contents to the file backing this object.
-
-        Args:
-            schema: A schema object to use to validate. It overrides the one
-                that has been provided at object construction stage.
-            exclude_case: Whether to exclude validated objects from the error.
-                Useful when used with large configs.
 
         Returns:
             The absolute path to the written file.
@@ -406,34 +331,23 @@ class YAMLConfigManager(MutableMapping):
         with open(self.locker.filepath, "w") as f:
             f.write(self.to_yaml())
 
-        if schema is not None or self.validate_on_write:
-            self.validate(schema=schema, exclude_case=exclude_case)
-
         abs_path = os.path.abspath(self.locker.filepath)
         _LOGGER.debug(f"Wrote to a file: {abs_path}")
         return os.path.abspath(abs_path)
 
     @ensure_locked(WRITE)
-    def rebase_and_write(
-        self, schema: dict[str, Any] | None = None, exclude_case: bool = False
-    ) -> str:
+    def rebase_and_write(self) -> str:
         """Rebase from disk and write. Safe for multi-process scenarios.
 
         This is a convenience method that combines rebase() and write() into
         a single call. Use this when multiple processes may have written to
         the file since you read it in.
 
-        Args:
-            schema: A schema object to use to validate. It overrides the one
-                that has been provided at object construction stage.
-            exclude_case: Whether to exclude validated objects from the error.
-                Useful when used with large configs.
-
         Returns:
             The absolute path to the written file.
         """
         self.rebase()
-        return self.write(schema=schema, exclude_case=exclude_case)
+        return self.write()
 
     def write_copy(self, filepath: str | Path) -> str:
         """Write the contents to an external file.

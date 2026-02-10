@@ -11,9 +11,6 @@ ORI_STATE_KEY: str = "ori_state"
 WAIT_MAX_KEY: str = "wait_time"
 ALIASES_KEY: str = "aliases"
 ALIASES_KEY_RAW: str = "aliases_raw"
-WRITE_VALIDATE_KEY: str = "write_validate"
-SCHEMA_KEY: str = "schema"
-
 ATTR_KEYS: tuple[str, ...] = (
     USE_LOCKS_KEY,
     FILEPATH_KEY,
@@ -22,8 +19,6 @@ ATTR_KEYS: tuple[str, ...] = (
     WAIT_MAX_KEY,
     ALIASES_KEY,
     ALIASES_KEY_RAW,
-    WRITE_VALIDATE_KEY,
-    SCHEMA_KEY,
 )
 
 LOCK_PREFIX: str = "lock."
