@@ -17,7 +17,6 @@ from ._version import __version__
 from typing import Union
 from pathlib import Path
 
-
 _LOGGER = logging.getLogger(__name__)
 
 # Hack for string indexes of both ordered and unordered yaml representations
