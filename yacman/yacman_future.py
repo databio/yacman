@@ -177,6 +177,12 @@ class FutureYAMLConfigManager(MutableMapping):
         return
 
     @property
+    def locked(self) -> bool:
+        if self.locker is None:
+            return False
+        return self.locker.locked
+
+    @property
     def settings(self):
         return {
             "wait_max": self.wait_max,

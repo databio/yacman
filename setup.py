@@ -52,5 +52,5 @@ setup(
     url="https://github.com/databio/yacman",
     author="Nathan Sheffield, Michal Stolarczyk",
     author_email="nathan@code.databio.org",
-    **extra
+    **extra,
 )

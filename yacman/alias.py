@@ -316,8 +316,9 @@ def _make_list_of_aliases(aliases):
 
     def _raise_alias_class(x):
         raise AliasError(
-            "A string or a list of strings is required, "
-            "got: {}".format(x.__class__.__name__)
+            "A string or a list of strings is required, got: {}".format(
+                x.__class__.__name__
+            )
         )
 
     if aliases is None:

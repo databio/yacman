@@ -1,5 +1,6 @@
 from ._version import __version__
 from .alias import *
+from .alias_future import AliasedYAMLConfigManager
 
 # Original version (deprecated, kept for backwards compat)
 from .yacman import *
