@@ -144,7 +144,7 @@ class TestReading:
         Here we test that the object constructor waits for a second and
         raises a Runtime error because it tries to lock the file for reading by default
         """
-        yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
+        _yacmap = yacman.YacAttMap(filepath=cfg_file, writable=True)
         with pytest.raises(RuntimeError):
             yacman.YacAttMap(filepath=cfg_file, wait_max=1)
         # yacmap.make_readonly()
@@ -303,7 +303,7 @@ class TestValidation:
 
 def cleanup_locks(lcks):
     if lcks:
-        [os.remove(l) for l in lcks]
+        [os.remove(lck) for lck in lcks]
 
 
 def make_cfg_file_path(name, data_path):
