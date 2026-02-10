@@ -100,6 +100,12 @@ class YacAttMap(attmap.PathExAttMap):
             validated every time the `write` method is executed, which is
             a way of preventing invalid config writing
         """
+        warnings.warn(
+            "YacAttMap is deprecated and will be removed in yacman 1.0. "
+            "Use YAMLConfigManager instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if writable:
             if filepath:
                 create_lock(filepath, wait_max)
