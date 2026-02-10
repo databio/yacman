@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
+import logging
 import os
-
+import sys
 from argparse import ArgumentParser
 from random import random
 from time import sleep
 
-from yacman import YAMLConfigManager
-from yacman import write_lock
-
-import logging
+from yacman import YAMLConfigManager, write_lock
 
 _LOGGER = logging.getLogger()  # root logger
 stream = logging.StreamHandler(sys.stdout)

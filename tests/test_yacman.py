@@ -1,13 +1,10 @@
 import os
 
 import pytest
-from jsonschema.exceptions import ValidationError
+from ubiquerg import WRITE, make_all_lock_paths
 
 import yacman
-from yacman.const import FILEPATH_KEY, RO_KEY
-
 from yacman import read_lock, write_lock
-from ubiquerg import make_all_lock_paths, WRITE, READ
 
 
 def get_temp_copy(cfg_template: str, tmp_cfg: str):
@@ -34,7 +31,7 @@ class TestWriting:
 
         # File is locked when used in a context manager
         lock_paths = make_all_lock_paths(tmp_cfg)
-        with write_lock(ym) as locked_ym:
+        with write_lock(ym) as _locked_ym:
             assert os.path.exists(lock_paths[WRITE])
 
     def test_write_creates_file(self, data_path, list_locks):
@@ -137,7 +134,7 @@ class TestReadList:
 
 def cleanup_locks(lcks):
     if lcks:
-        [os.remove(l) for l in lcks]
+        [os.remove(lck) for lck in lcks]
 
 
 def make_cfg_file_path(name, data_path):

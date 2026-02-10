@@ -262,5 +262,5 @@ class TestAliases:
         key = list(aliases.keys())[0]
         alias = aliases[key]
         assert x.set_aliases(key=key, aliases=alias)
-        assert not (f"{key}_false" in x)
-        assert not (f"{alias[0]}_false" in x)
+        assert f"{key}_false" not in x
+        assert f"{alias[0]}_false" not in x
