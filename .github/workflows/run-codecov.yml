@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
