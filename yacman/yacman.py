@@ -1,20 +1,20 @@
 import logging
 import os
-import yaml
-
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, MutableMapping
 from pathlib import Path
 from typing import Any, Callable
+
+import yaml
 from jsonschema import validate as _validate
 from jsonschema.exceptions import ValidationError
 from ubiquerg import (
-    expandpath,
-    is_url,
-    ThreeLocker,
-    ensure_locked,
-    locked_read_file,
     READ,
     WRITE,
+    ThreeLocker,
+    ensure_locked,
+    expandpath,
+    is_url,
+    locked_read_file,
 )
 
 from ._version import __version__
@@ -79,8 +79,6 @@ DEFAULT_WAIT_TIME = 60
 SCHEMA_KEY = "schema"
 FILEPATH_KEY = "file_path"
 
-from collections.abc import MutableMapping
-
 # Since read and write are now different context managers, we have to
 # separate them like this, instead of using __enter__ and __exit__ on the class
 # itself, which only allows one type of context manager.
@@ -137,7 +135,7 @@ class YAMLConfigManager(MutableMapping):
             self.data = dict(entries or {})
         if schema_source is not None:
             assert isinstance(schema_source, str), TypeError(
-                f"Path to the schema to validate the config must be a string"
+                "Path to the schema to validate the config must be a string"
             )
             sp = expandpath(schema_source)
             assert os.path.exists(sp), FileNotFoundError(
@@ -758,7 +756,7 @@ def select_config(
 
         for env_var in config_env_vars:
             result = os.environ.get(env_var)  # type: ignore
-            if result == None:
+            if result is None:
                 _LOGGER.debug(f"Env var '{env_var}' not set.")
                 continue
             elif result == "":
