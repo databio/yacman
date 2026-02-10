@@ -1,6 +1,7 @@
 import logging
 import os
 from collections.abc import Iterator, Mapping, MutableMapping
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Callable
 
@@ -16,8 +17,6 @@ from ubiquerg import (
     is_url,
     locked_read_file,
 )
-
-from importlib.metadata import version
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.debug(f"Using yacman version {version('yacman')}")
