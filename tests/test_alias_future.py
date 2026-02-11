@@ -4,7 +4,6 @@ import yacman
 from yacman import AliasedYAMLConfigManager
 from yacman.exceptions import AliasError, UndefinedAliasError
 
-
 ENTRIES_ALIASES_PARAMS = [
     ({"a": "1"}, {"a": ["alias_a"]}),
     ({"b": "1"}, {"b": ["alias_b"]}),
