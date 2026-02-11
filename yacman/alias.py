@@ -320,8 +320,9 @@ def _make_list_of_aliases(aliases: str | list[str] | None) -> list[str] | None:
 
     def _raise_alias_class(x: Any) -> AliasError:
         return AliasError(
-            "A string or a list of strings is required, "
-            "got: {}".format(x.__class__.__name__)
+            "A string or a list of strings is required, got: {}".format(
+                x.__class__.__name__
+            )
         )
 
     if aliases is None:

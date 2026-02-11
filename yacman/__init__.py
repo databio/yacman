@@ -1,11 +1,20 @@
 import warnings
 
-from ._version import __version__
-from .alias import AliasedYAMLConfigManager
+from ubiquerg import read_lock as read_lock
+from ubiquerg import write_lock as write_lock
+
+from .alias import AliasedYAMLConfigManager as AliasedYAMLConfigManager
 from .const import *
 from .exceptions import *
-from .yacman import YAMLConfigManager, select_config, load_yaml
-from ubiquerg import read_lock, write_lock
+from .yacman import (
+    YAMLConfigManager,
+)
+from .yacman import (
+    load_yaml as load_yaml,
+)
+from .yacman import (
+    select_config as select_config,
+)
 
 
 # Deprecated alias for backwards compatibility with v0.9.3 transition period

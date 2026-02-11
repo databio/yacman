@@ -1,6 +1,5 @@
 """Tests for numeric key handling in YAML files."""
 
-import pytest
 from yacman import YAMLConfigManager
 
 
@@ -41,7 +40,6 @@ text: regular_value
 
     def test_numeric_keys_from_existing_file(self):
         """Test with the numeric_keys.yaml test file."""
-        import os
         from pathlib import Path
 
         test_file = Path(__file__).parent / "data" / "numeric_keys.yaml"

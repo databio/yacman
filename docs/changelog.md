@@ -2,11 +2,17 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [1.0.0] -- Unreleased
+## [1.0.0] -- 2026-02-10
 
 ### Changed
 - Renamed `FutureYAMLConfigManager` to `YAMLConfigManager` (the "future" is now!)
 - `FutureYAMLConfigManager` is still available as a deprecated alias with a warning (will be removed in v1.1.0)
+- Migrated packaging from setup.py to pyproject.toml with hatchling build backend
+- Switched linting/formatting from black/isort to ruff
+- Updated CI workflows to latest GitHub Actions versions (checkout v4, setup-python v5)
+- Added macOS to test matrix
+- Use `importlib.metadata` for version discovery instead of hardcoded `_version.py`
+- Requires Python >=3.10
 
 ### Fixed
 - Simplified dependencies
@@ -16,6 +22,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Removed
 - jsonschema validation
 - attmap support
+- Legacy packaging files (setup.py, MANIFEST.in, requirements/)
 
 ## [0.9.4] -- 2025-11-03
 
