@@ -106,8 +106,32 @@ with read_lock(ym) as locked_ym:
 
 ```
 
+### Locking caveats
 
+The `write_lock()` and `read_lock()` context managers use file-based locking that is **NOT re-entrant**. A process cannot acquire the same lock twice - it will deadlock waiting for itself. Do not nest lock contexts on the same file:
 
+```python
+# WRONG - will deadlock:
+with write_lock(cfg):
+    some_function(cfg)
+
+def some_function(cfg):
+    with write_lock(cfg):  # Deadlock! Caller already holds this lock
+        cfg.write()
+
+# RIGHT - lock once at the top level:
+with write_lock(cfg):
+    some_function(cfg)
+
+def some_function(cfg):
+    cfg.write()  # No lock here - caller already holds it
+```
+
+If a function needs to write to a config file, either:
+1. Have the caller acquire the lock and pass the already-locked object, OR
+2. Have the function acquire the lock itself (document this in the function's docstring)
+
+But never both.
 
 3. Update any constructors to use the `from_{x}` functions
 
