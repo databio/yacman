@@ -1,5 +1,6 @@
 import logging
 import os
+import warnings
 from collections.abc import Iterable, Mapping
 from sys import _getframe
 from signal import signal, SIGINT, SIGTERM
@@ -108,6 +109,13 @@ class YAMLConfigManager(MutableMapping):
             a way of preventing invalid config writing
         :param str create_file: Create an empty file at filepath upon data load.
         """
+
+        warnings.warn(
+            "This YAMLConfigManager (from yacman.yacman1) is deprecated and will be removed in yacman 1.0. "
+            "Use 'from yacman import YAMLConfigManager' which now provides the new API.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         # Settings for this config object
         if filepath:

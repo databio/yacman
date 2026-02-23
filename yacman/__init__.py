@@ -1,12 +1,18 @@
 from ._version import __version__
 from .alias import *
+from .alias_future import AliasedYAMLConfigManager
 
-# Origina version
+# Original version (deprecated, kept for backwards compat)
 from .yacman import *
 
-# For transition, mostly backwards-compatible version
-from .yacman1 import YAMLConfigManager, select_config, load_yaml
+# Primary class: YAMLConfigManager now points to FutureYAMLConfigManager
+from .yacman_future import FutureYAMLConfigManager as YAMLConfigManager
 
-# Future version (not backwards-compatible)
+# Deprecated alias -- downstream code doing `from yacman import FutureYAMLConfigManager` still works
 from .yacman_future import FutureYAMLConfigManager
+
+# Utility functions (from the future module)
+from .yacman_future import load_yaml, select_config
+
+# Locking context managers
 from ubiquerg import read_lock, write_lock

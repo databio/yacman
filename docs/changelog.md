@@ -2,6 +2,18 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.9.5] -- 2026-02-10
+
+### Changed
+- `YAMLConfigManager` now points to `FutureYAMLConfigManager` (the v1 API). Use `from_yaml_file()`, `from_obj()`, `from_yaml_data()` constructors and `read_lock`/`write_lock` context managers.
+- `FutureYAMLConfigManager` remains importable but is deprecated
+
+### Deprecated
+- `FutureYAMLConfigManager` name (use `YAMLConfigManager` instead)
+- `YacAttMap` class (now emits `DeprecationWarning` on instantiation)
+- `AliasedYacAttMap` class (now emits `DeprecationWarning` on instantiation)
+- Old `YAMLConfigManager` from `yacman1` module (now emits `DeprecationWarning` on instantiation)
+
 ## [0.9.4] -- 2025-11-03
 
 ### Added

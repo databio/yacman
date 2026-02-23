@@ -6,6 +6,8 @@ from jsonschema.exceptions import ValidationError
 import yacman
 from yacman.const import FILEPATH_KEY, IK, RO_KEY
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 
 class TestWriting:
     def test_basic_write(self, cfg_file, list_locks, data_path, locked_cfg_file):

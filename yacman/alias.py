@@ -1,4 +1,5 @@
 import logging
+import warnings
 from collections.abc import Mapping
 from inspect import getfullargspec
 from warnings import warn
@@ -51,6 +52,11 @@ class AliasedYacAttMap(YacAttMap):
         :param bool exact: whether aliases should not be used, even if defined
         """
 
+        warnings.warn(
+            "AliasedYacAttMap is deprecated and will be removed in yacman 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super(AliasedYacAttMap, self).__init__(
             entries=entries,
             filepath=filepath,
@@ -310,8 +316,9 @@ def _make_list_of_aliases(aliases):
 
     def _raise_alias_class(x):
         raise AliasError(
-            "A string or a list of strings is required, "
-            "got: {}".format(x.__class__.__name__)
+            "A string or a list of strings is required, got: {}".format(
+                x.__class__.__name__
+            )
         )
 
     if aliases is None:
