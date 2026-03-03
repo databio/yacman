@@ -1,5 +1,4 @@
 import logging
-import warnings
 from collections.abc import Mapping
 from inspect import getfullargspec
 from typing import Any, Callable
@@ -7,7 +6,7 @@ from warnings import warn
 
 from .const import *
 from .exceptions import *
-from .yacman import YAMLConfigManager
+from .yacman_future import FutureYAMLConfigManager as YAMLConfigManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -93,15 +92,6 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         This item accession method will try to access the value by a literal
         key. If the key is not defined in the object it will try to access the
         key by its alias, if defined. If both fail, a KeyError is raised.
-
-        Args:
-            item: The key or alias to look up.
-
-        Returns:
-            The value associated with the key or alias.
-
-        Raises:
-            KeyError: If neither the key nor its alias is defined.
         """
         try:
             return super(AliasedYAMLConfigManager, self).__getitem__(item)
@@ -114,18 +104,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
                 return super(AliasedYAMLConfigManager, self).__getitem__(key)
 
     def __contains__(self, key: object) -> bool:
-        """Check if key or alias exists in the object.
-
-        This containment verification method will first try the literal key.
-        If the key is not defined in the object it will try to use its alias.
-        If both fail, a negative decision is returned; otherwise -- positive.
-
-        Args:
-            key: The key or alias to check for.
-
-        Returns:
-            True if the key or alias exists, False otherwise.
-        """
+        """Check if key or alias exists in the object."""
         if not isinstance(key, str):
             return False
         try:
@@ -146,36 +125,25 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             return True
 
     def __delitem__(self, key: str) -> None:
-        """Delete item by key or alias.
-
-        This item deletion method will try to remove the item by the literal
-        key or by its alias, if defined.
-
-        Args:
-            key: The key or alias to delete.
-        """
+        """Delete item by key or alias."""
         try:
-            # check whether an alias was used
             alias_key = self.get_key(alias=key)
         except (UndefinedAliasError, KeyError):
-            # alias was not used, try to delete the literal key
             super(AliasedYAMLConfigManager, self).__delitem__(key)
         else:
-            # alias was used, try to delete the alias
             super(AliasedYAMLConfigManager, self).__delitem__(alias_key)
 
     def get_aliases(self, key: str) -> list[str]:
-        """Get the alias for key in the object.
+        """Get the aliases for a key.
 
         Args:
-            key: Key to find an alias for.
+            key: Key to find aliases for.
 
         Returns:
             List of aliases matched by the key.
 
         Raises:
-            UndefinedAliasError: If no alias has been defined for the
-                requested key.
+            UndefinedAliasError: If no alias has been defined for the key.
         """
         aliases = []
         for a, k in getattr(self, ALIASES_KEY).items():
@@ -186,7 +154,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         raise UndefinedAliasError("No alias defined for: {}".format(key))
 
     def get_key(self, alias: str) -> str:
-        """Get the key for alias in the object.
+        """Get the key for an alias.
 
         Args:
             alias: Alias to find a key for.
@@ -195,17 +163,8 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
             Key matched by the alias.
 
         Raises:
-            UndefinedAliasError: If no key has been defined for the
-                requested alias.
+            UndefinedAliasError: If no key has been defined for the alias.
         """
-        # try:
-        #     # first try to use the parent method (doesn't try to use aliases) to
-        #     # check if the __internal key is defined.
-        #     # Otherwise we would end up in an infinite recursion loop.
-        #     super(AliasedYAMLConfigManager, self).__getitem__(IK)
-        # except KeyError:
-        #     # raise UndefinedAliasError, which is caught in the updated __getitem__ method
-        #     raise UndefinedAliasError()
         if alias in getattr(self, ALIASES_KEY).keys():
             return getattr(self, ALIASES_KEY)[alias]
         raise UndefinedAliasError("No key defined for: {}".format(alias))
@@ -217,10 +176,10 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
         overwrite: bool = False,
         reset_key: bool = False,
     ) -> tuple[list[str], list[str]]:
-        """Assign an alias to a key in the object.
+        """Assign aliases to a key.
 
         Args:
-            key: Name of the key to assign to an alias for.
+            key: Name of the key to assign aliases for.
             aliases: Alias or list of aliases to use.
             overwrite: Whether to force overwrite the key for an already
                 defined alias.
@@ -258,7 +217,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
     def remove_aliases(
         self, key: str, aliases: str | list[str] | None = None
     ) -> list[str]:
-        """Remove an alias from the object.
+        """Remove aliases from the object.
 
         Args:
             key: Name of the key to remove aliases for.
@@ -287,18 +246,7 @@ class AliasedYAMLConfigManager(YAMLConfigManager):
 
 
 def is_aliases_mapping_valid(aliases: Any, strictness: bool | None = None) -> bool:
-    """Determine if the aliases mapping is formatted properly.
-
-    The expected format is {"k": ["v"]}, where keys map to lists of aliases.
-
-    Args:
-        aliases: Mapping to verify.
-        strictness: How to handle format issues. None for warning, True for
-            AliasError, False to disregard.
-
-    Returns:
-        Whether the mapping adheres to the correct format.
-    """
+    """Determine if the aliases mapping is formatted properly, e.g. {"k": ["v"]}."""
     if isinstance(aliases, Mapping):
         if all([isinstance(v, list) for k, v in aliases.items()]):
             return True
@@ -307,17 +255,7 @@ def is_aliases_mapping_valid(aliases: Any, strictness: bool | None = None) -> bo
 
 
 def _make_list_of_aliases(aliases: str | list[str] | None) -> list[str] | None:
-    """Check and/or produce a proper aliases input.
-
-    Args:
-        aliases: Alias or collection of aliases to check.
-
-    Returns:
-        List of aliases.
-
-    Raises:
-        AliasError: If the input format does not meet the requirements.
-    """
+    """Check and/or produce a proper aliases input."""
 
     def _raise_alias_class(x: Any) -> AliasError:
         return AliasError(
@@ -339,12 +277,7 @@ def _make_list_of_aliases(aliases: str | list[str] | None) -> list[str] | None:
 
 
 def _emit_msg(strictness: bool | None, msg: str) -> None:
-    """Emit a message based on the selected strictness level.
-
-    Args:
-        strictness: None for warning, True for AliasError, False for debug log.
-        msg: A message to emit.
-    """
+    """Emit a message based on the selected strictness level."""
     if strictness:
         raise AliasError(msg)
     elif strictness is None:
