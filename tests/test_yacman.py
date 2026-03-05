@@ -19,6 +19,7 @@ def get_temp_copy(cfg_template: str, tmp_cfg: str):
         tmp_cfg.write_text(f.read())
     return str(tmp_cfg)
 
+
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 

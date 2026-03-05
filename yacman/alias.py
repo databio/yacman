@@ -1,5 +1,4 @@
 import logging
-import warnings
 from collections.abc import Mapping
 from inspect import getfullargspec
 from typing import Any, Callable
