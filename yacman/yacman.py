@@ -522,8 +522,6 @@ def _safely_expand_path(x: Any) -> Any:
     return x
 
 
-
-
 def _check_filepath(filepath: Any) -> str:
     """Validate if the filepath is a str.
 
