@@ -444,9 +444,7 @@ class YAMLConfigManager(MutableMapping):
         Args:
             key: The key to delete.
         """
-        value = self[key]
         del self.data[key]
-        self.pop(value, None)
 
     def priority_get(
         self,
@@ -493,7 +491,7 @@ class YAMLConfigManager(MutableMapping):
             return default
         if strict:
             message = (
-                "Value for required argument '{arg_name}' could not be determined."
+                f"Value for required argument '{arg_name}' could not be determined."
             )
             _LOGGER.warning(message)
             raise Exception(message)
@@ -524,24 +522,6 @@ def _safely_expand_path(x: Any) -> Any:
     return x
 
 
-def _unsafely_expand_path(x: Any) -> Any:
-    """Recursively expand paths in strings and mappings by modifying in place.
-
-    Args:
-        x: The value to expand. Can be a string, mapping, or other type.
-
-    Returns:
-        The expanded value. Strings are expanded, mappings are modified in place
-        and returned, and other types are returned unchanged.
-    """
-    if isinstance(x, str):
-        return expandpath(x)
-    elif isinstance(x, Mapping):
-        for k in x.keys():
-            x[k] = _safely_expand_path(x[k])  # type: ignore
-        return x
-        # return {k: _safely_expand_path(v) for k, v in x.items()}
-    return x
 
 
 def _check_filepath(filepath: Any) -> str:
