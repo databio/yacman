@@ -21,7 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "pyyaml>=5.0",
-    "ubiquerg>=0.7.0",
+    "ubiquerg>=0.9.1",
 ]
 
 [project.urls]
