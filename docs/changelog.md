@@ -2,17 +2,27 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.9.5] -- 2026-02-10
+## [1.0.0] -- 2026-02-10
 
 ### Changed
-- `YAMLConfigManager` now points to `FutureYAMLConfigManager` (the v1 API). Use `from_yaml_file()`, `from_obj()`, `from_yaml_data()` constructors and `read_lock`/`write_lock` context managers.
-- `FutureYAMLConfigManager` remains importable but is deprecated
+- Renamed `FutureYAMLConfigManager` to `YAMLConfigManager` (the "future" is now!)
+- `FutureYAMLConfigManager` is still available as a deprecated alias with a warning (will be removed in v1.1.0)
+- Migrated packaging from setup.py to pyproject.toml with hatchling build backend
+- Switched linting/formatting from black/isort to ruff
+- Updated CI workflows to latest GitHub Actions versions (checkout v4, setup-python v5)
+- Added macOS to test matrix
+- Use `importlib.metadata` for version discovery instead of hardcoded `_version.py`
+- Requires Python >=3.10
 
-### Deprecated
-- `FutureYAMLConfigManager` name (use `YAMLConfigManager` instead)
-- `YacAttMap` class (now emits `DeprecationWarning` on instantiation)
-- `AliasedYacAttMap` class (now emits `DeprecationWarning` on instantiation)
-- Old `YAMLConfigManager` from `yacman1` module (now emits `DeprecationWarning` on instantiation)
+### Fixed
+- Simplified dependencies
+- Removed deprecated code (`IK` constant, `_warn_deprecated` function)
+- Removed deprecated properties (`alias_dict`, `_raw_alias_dict`)
+
+### Removed
+- jsonschema validation
+- attmap support
+- Legacy packaging files (setup.py, MANIFEST.in, requirements/)
 
 ## [0.9.4] -- 2025-11-03
 
@@ -32,6 +42,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - New `FutureYAMLConfigManager` object, prep for v1.
 - Improved file locking system with `read_lock` and `write_lock` context managers
 - New `from_x` object construction API.
+
 
 ## [0.9.2] -- 2023-10-05
 
