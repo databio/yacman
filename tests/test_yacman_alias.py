@@ -16,7 +16,7 @@ class TestAliases:
         ],
     )
     def test_aliases_init(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries, aliases=aliases)
+        x = yacman.AliasedYAMLConfigManager(entries=entries, aliases=aliases)
         key = list(entries.keys())[0]
         alias = list(aliases.values())[0][0]
         assert x[key] == x[alias]
@@ -35,7 +35,7 @@ class TestAliases:
         def _aliases_fun(x):
             return aliases
 
-        yacman.AliasedYacAttMap(entries=entries, aliases=_aliases_fun)
+        yacman.AliasedYAMLConfigManager(entries=entries, aliases=_aliases_fun)
 
     @pytest.mark.parametrize(
         ["entries", "aliases"],
@@ -52,7 +52,7 @@ class TestAliases:
             return aliases
 
         with pytest.raises(AliasError):
-            yacman.AliasedYacAttMap(
+            yacman.AliasedYAMLConfigManager(
                 entries=entries, aliases=_aliases_fun, aliases_strict=True
             )
 
@@ -71,7 +71,7 @@ class TestAliases:
             raise Exception("test")
 
         with pytest.raises(AliasError):
-            yacman.AliasedYacAttMap(
+            yacman.AliasedYAMLConfigManager(
                 entries=entries, aliases=_aliases_fun, aliases_strict=True
             )
 
@@ -90,7 +90,7 @@ class TestAliases:
             return {"a": "test"}
 
         with pytest.raises(AliasError):
-            yacman.AliasedYacAttMap(
+            yacman.AliasedYAMLConfigManager(
                 entries=entries, aliases=_aliases_fun, aliases_strict=True
             )
 
@@ -103,7 +103,7 @@ class TestAliases:
         ],
     )
     def test_aliases_setting(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key]
         assert x.set_aliases(key=key, aliases=alias)
@@ -118,7 +118,7 @@ class TestAliases:
         ],
     )
     def test_aliases_setting_reset(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key][0]
         assert x.set_aliases(key=key, aliases=alias)
@@ -136,7 +136,7 @@ class TestAliases:
         ],
     )
     def test_aliases_setting_no_overwrite(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key][0]
         assert x.set_aliases(key=key, aliases=alias)
@@ -153,7 +153,7 @@ class TestAliases:
         ],
     )
     def test_aliases_setting_overwrite(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key][0]
 
@@ -174,7 +174,7 @@ class TestAliases:
         ],
     )
     def test_aliases_removal_all(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries, aliases=aliases)
+        x = yacman.AliasedYAMLConfigManager(entries=entries, aliases=aliases)
         key = list(aliases.keys())[0]
         removed = x.remove_aliases(key=key)
         assert isinstance(removed, list)
@@ -191,7 +191,7 @@ class TestAliases:
         ],
     )
     def test_aliases_removal_specific(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries, aliases=aliases)
+        x = yacman.AliasedYAMLConfigManager(entries=entries, aliases=aliases)
         key = list(aliases.keys())[0]
         alias_to_remove = [aliases[key][0]]
         removed = x.remove_aliases(key=key, aliases=alias_to_remove)
@@ -207,7 +207,7 @@ class TestAliases:
         ],
     )
     def test_accession_works_for_keys_and_aliases(self, entries, aliases):
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key]
         assert x.set_aliases(key=key, aliases=alias)
@@ -223,7 +223,7 @@ class TestAliases:
     )
     def test_containment_checks_for_keys_and_aliases(self, entries, aliases):
         print(f"aliases: {aliases}")
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key]
         assert x.set_aliases(key=key, aliases=alias)
@@ -240,12 +240,12 @@ class TestAliases:
     )
     def test_delitem_checks_for_keys_and_aliases(self, entries, aliases):
         print(f"aliases: {aliases}")
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key]
         x.__delitem__(key)
         assert key not in x
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         x.set_aliases(key=key, aliases=alias)
         x.__delitem__(alias[0])
         assert key not in x
@@ -260,9 +260,9 @@ class TestAliases:
     )
     def test_containment_correctly_resolves_to_false(self, entries, aliases):
         print(f"aliases: {aliases}")
-        x = yacman.AliasedYacAttMap(entries=entries)
+        x = yacman.AliasedYAMLConfigManager(entries=entries)
         key = list(aliases.keys())[0]
         alias = aliases[key]
         assert x.set_aliases(key=key, aliases=alias)
-        assert not (f"{key}_false" in x)
-        assert not (f"{alias[0]}_false" in x)
+        assert f"{key}_false" not in x
+        assert f"{alias[0]}_false" not in x

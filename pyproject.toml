@@ -1,0 +1,70 @@
+[project]
+name = "yacman"
+version = "1.0.0"
+description = "A YAML configuration manager"
+readme = "README.md"
+license = "BSD-2-Clause"
+requires-python = ">=3.10"
+authors = [
+    { name = "Nathan Sheffield", email = "nathan@code.databio.org" },
+    { name = "Michal Stolarczyk" },
+]
+keywords = ["bioinformatics", "YAML", "configuration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "pyyaml>=5.0",
+    "ubiquerg>=0.9.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/databio/yacman"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.pytest.ini_options]
+addopts = "-rfE"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["F403", "F405", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["yacman"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+files = [
+    "yacman/const.py",
+    "yacman/exceptions.py",
+    "yacman/alias.py",
+    "yacman/yacman.py",
+    "yacman/__init__.py",
+]
+
+[[tool.mypy.overrides]]
+module = "ubiquerg"
+ignore_missing_imports = true

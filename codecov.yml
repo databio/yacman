@@ -1,5 +1,0 @@
-ignore:
-  - "*/argparser.py"
-  - "*/cli.py"
-  - "*/__main__.py"
-  - "setup.py"

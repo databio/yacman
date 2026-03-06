@@ -76,3 +76,5 @@ dist/
 
 *ipynb_checkpoints*
 locking_tests/test.yaml
+
+plans/
