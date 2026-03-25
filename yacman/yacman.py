@@ -123,7 +123,7 @@ class YAMLConfigManager(MutableMapping):
 
         Args:
             entries: Object to initialize from.
-            **kwargs: Keyword arguments to pass to the constructor.
+            **kwargs (Any): Keyword arguments to pass to the constructor.
 
         Returns:
             New instance of the class.
@@ -136,7 +136,7 @@ class YAMLConfigManager(MutableMapping):
 
         Args:
             yamldata: YAML-formatted string.
-            **kwargs: Keyword arguments to pass to the constructor.
+            **kwargs (Any): Keyword arguments to pass to the constructor.
 
         Returns:
             New instance of the class.
@@ -153,7 +153,7 @@ class YAMLConfigManager(MutableMapping):
         Args:
             filepath: Path to the YAML config file.
             create_file: Create a file at filepath if it doesn't exist.
-            **kwargs: Keyword arguments to pass to the constructor.
+            **kwargs (Any): Keyword arguments to pass to the constructor.
 
         Returns:
             New instance of the class.
