@@ -1,0 +1,22 @@
+site_name: Yacman
+nav:
+  - Yacman: README.md
+  - Getting started:
+    - What is yacman?: README.md
+    - Tutorial: notebooks/tutorial.ipynb
+    - Upgrading to v1.0: upgrading.md
+  - Reference:
+    - How to cite: /citations/
+    - API: code/python-api.md
+    - Changelog: changelog.md
+    - Support: https://github.com/databio/yacman/issues
+
+renderers:
+  - hub-notebooks:
+      include: [notebooks/*.ipynb]
+      execute: false
+  - hub-python-api:
+      package_root: ..
+      packages: [yacman]
+      include: [code/python-api.md]
+      docstring_style: google

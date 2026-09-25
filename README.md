@@ -7,7 +7,7 @@
 
 Yacman is a YAML configuration manager. It provides some convenience tools for dealing with YAML configuration files.
 
-Please see [this](docs/usage.md) Python notebook for features and usage instructions and [this](docs/api_docs.md) document for API documentation.
+Please see [this](https://pep.databio.org/yacman/notebooks/tutorial/) Python notebook for features and usage instructions and [this](https://pep.databio.org/yacman/code/python-api/) document for API documentation.
 
 ## Upgrading guide
 
