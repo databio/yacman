@@ -70,11 +70,15 @@ In the new system, you must use `rebase()` before `write()` if you want to allow
 More examples:
 
 ```python
-
 from yacman import YAMLConfigManager
 from yacman import read_lock, write_lock
 
-data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
+data = {
+    "my_list": [1, 2, 3],
+    "my_int": 8,
+    "my_str": "hello world!",
+    "my_dict": {"nested_val": 15},
+}
 
 ym = YAMLConfigManager(data)
 
@@ -103,7 +107,6 @@ with read_lock(ym) as locked_ym:
 # use a read lock to reset the in-memory object to whatever is on disk
 with read_lock(ym) as locked_ym:
     locked_ym.reset()
-
 ```
 
 ### Locking caveats
@@ -115,13 +118,16 @@ The `write_lock()` and `read_lock()` context managers use file-based locking tha
 with write_lock(cfg):
     some_function(cfg)
 
+
 def some_function(cfg):
     with write_lock(cfg):  # Deadlock! Caller already holds this lock
         cfg.write()
 
+
 # RIGHT - lock once at the top level:
 with write_lock(cfg):
     some_function(cfg)
+
 
 def some_function(cfg):
     cfg.write()  # No lock here - caller already holds it
@@ -142,14 +148,18 @@ Examples:
 ```python
 from yacman import YAMLConfigManager
 
-data = {"my_list": [1,2,3], "my_int": 8, "my_str": "hello world!", "my_dict": {"nested_val": 15}}
+data = {
+    "my_list": [1, 2, 3],
+    "my_int": 8,
+    "my_str": "hello world!",
+    "my_dict": {"nested_val": 15},
+}
 file_path = "tests/data/full.yaml"
 yaml_data = "myvar: myval"
 
 yacman.YAMLConfigManager.from_yaml_file(file_path)
 yacman.YAMLConfigManager.from_yaml_data(yaml_data)
 yacman.YAMLConfigManager.from_obj(data)
-
 ```
 
 In the past, you could load from a file and overwrite some attributes with a dict of variables, all from the constructor.
@@ -184,13 +194,16 @@ Some interactive demos
 
 ```python
 from yacman import YAMLConfigManager
+
 ym = yacman.YAMLConfigManager(entries=["a", "b", "c"])
 ym.to_dict()
 ym
 
 print(ym.to_yaml())
 
-ym = YAMLConfigManager(entries={"top": {"bottom": ["a", "b"], "bottom2": "a"}, "b": "c"})
+ym = YAMLConfigManager(
+    entries={"top": {"bottom": ["a", "b"], "bottom2": "a"}, "b": "c"}
+)
 ym
 print(ym.to_yaml())
 
@@ -209,5 +222,4 @@ print(ym.to_yaml())
 
 ym = YAMLConfigManager(filepath="tests/data/full.yaml")
 print(ym.to_yaml(expand=True))
-
 ```

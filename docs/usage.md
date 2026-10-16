@@ -7,7 +7,11 @@ First, let's prepare some data to work with
 
 ```python
 import yaml
-yaml_dict = {'cfg_version': 0.1, 'lvl1': {'lvl2': {'lvl3': {'entry': ['val1', 'val2']}}}}
+
+yaml_dict = {
+    "cfg_version": 0.1,
+    "lvl1": {"lvl2": {"lvl3": {"entry": ["val1", "val2"]}}},
+}
 yaml_str = """\
 cfg_version: 0.1
 lvl1:
@@ -17,7 +21,7 @@ lvl1:
 """
 filepath = "test.yaml"
 
-with open(filepath, 'w') as f:
+with open(filepath, "w") as f:
     data = yaml.dump(yaml_dict, f)
 
 import yacman
@@ -210,7 +214,7 @@ In any case, the resulting aliases mapping has to follow the format presented be
 aliases = {
     "key_1": ["first_key", "key_one"],
     "key_2": ["second_key", "key_two", "fav_key"],
-    "key_3": ["third_key", "key_three"]
+    "key_3": ["third_key", "key_three"],
 }
 ```
 
@@ -219,8 +223,9 @@ The `aliases` argument in the `AliasedYacAttmap` below is a Python `dict` with t
 
 
 ```python
-aliased_yacmap = yacman.AliasedYacAttMap(entries={'key_1': 'val_1', 'key_2': 'val_2', 'key_3': 'val_3'},
-                                         aliases=aliases)
+aliased_yacmap = yacman.AliasedYacAttMap(
+    entries={"key_1": "val_1", "key_2": "val_2", "key_3": "val_3"}, aliases=aliases
+)
 print(aliased_yacmap)
 ```
 
@@ -262,17 +267,19 @@ The `aliases` argument in the `AliasedYacAttmap` below is a Python `callable` th
 
 
 ```python
-entries={
-    'key_1': {'value': 'val_1', 'aliases': ['first_key']},
-    'key_2': {'value': 'val_2', 'aliases': ['second_key']},
-    'key_3': {'value': 'val_3', 'aliases': ['third_key']}
+entries = {
+    "key_1": {"value": "val_1", "aliases": ["first_key"]},
+    "key_2": {"value": "val_2", "aliases": ["second_key"]},
+    "key_3": {"value": "val_3", "aliases": ["third_key"]},
 }
 ```
 
 
 ```python
-aliased_yacmap = yacman.AliasedYacAttMap(entries=entries,
-                                         aliases=lambda x: {k: v.__getitem__("aliases", expand=False) for k, v in x.items()})
+aliased_yacmap = yacman.AliasedYacAttMap(
+    entries=entries,
+    aliases=lambda x: {k: v.__getitem__("aliases", expand=False) for k, v in x.items()},
+)
 print(aliased_yacmap)
 ```
 
@@ -320,7 +327,8 @@ Let's get a path to a YAML-formatted jsonschema and look at the contents:
 
 
 ```python
-from attmap import AttMap # disregard, this class can be used to print mappings nicely
+from attmap import AttMap  # disregard, this class can be used to print mappings nicely
+
 schema_path = "../tests/data/conf_schema.yaml"
 AttMap(yacman.load_yaml(schema_path))
 ```
@@ -354,9 +362,7 @@ Let's pass the path to the schema to the object constructor:
 
 
 ```python
-entries = {
-    "newattr": "test_string"
-}
+entries = {"newattr": "test_string"}
 
 yacmap = yacman.YacAttMap(entries=entries, schema_source=schema_path)
 ```
@@ -425,11 +431,15 @@ As mentioned above, the object can be validated when `write` method is called. L
 
 
 ```python
-yacmap = yacman.YacAttMap(filepath=filepath, schema_source=schema_path, writable=True, write_validate=True)
+yacmap = yacman.YacAttMap(
+    filepath=filepath, schema_source=schema_path, writable=True, write_validate=True
+)
 yacmap["newattr"] = "test_string"
 yacmap.write()
 del yacmap
-yacmap = yacman.YacAttMap(filepath=filepath, schema_source=schema_path, writable=True, write_validate=True)
+yacmap = yacman.YacAttMap(
+    filepath=filepath, schema_source=schema_path, writable=True, write_validate=True
+)
 yacmap
 del yacmap
 ```
@@ -440,7 +450,9 @@ But, if it doesn't, we are not able to write to the file:
 
 
 ```python
-yacmap = yacman.YacAttMap(filepath=filepath, schema_source=schema_path, writable=True, write_validate=True)
+yacmap = yacman.YacAttMap(
+    filepath=filepath, schema_source=schema_path, writable=True, write_validate=True
+)
 yacmap["newattr"] = 1
 yacmap.write(exclude_case=True)
 ```
@@ -487,10 +499,12 @@ del yacmap
 
 
 ```python
-yacmap = yacman.YacAttMap(filepath=filepath, schema_source=schema_path, writable=True, write_validate=True)
+yacmap = yacman.YacAttMap(
+    filepath=filepath, schema_source=schema_path, writable=True, write_validate=True
+)
 
 with yacmap as y:
-    y['newattr'] = 1
+    y["newattr"] = 1
 ```
 
     YacAttMap object did not pass schema validation
